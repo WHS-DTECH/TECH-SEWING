@@ -23,8 +23,7 @@
 
     if (adminBadge) {
       if (data.user.isAdmin) {
-        adminBadge.style.display = 'inline-block';
-        adminBadge.setAttribute('href', '/admin_user_roles.html');
+        adminBadge.style.display = 'flex';
       } else {
         adminBadge.style.display = 'none';
       }
@@ -35,4 +34,18 @@
     signoutLink.setAttribute('href', '/auth/google');
     if (adminBadge) adminBadge.style.display = 'none';
   }
+})();
+
+// Admin dropdown toggle
+(function () {
+  const toggleBtn = document.getElementById('admin-dropdown-toggle');
+  const dropMenu = document.getElementById('admin-dropdown-menu');
+  if (!toggleBtn || !dropMenu) return;
+  toggleBtn.addEventListener('click', function (e) {
+    e.stopPropagation();
+    dropMenu.classList.toggle('open');
+  });
+  document.addEventListener('click', function () {
+    dropMenu.classList.remove('open');
+  });
 })();

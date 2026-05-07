@@ -19,7 +19,13 @@
       <li><a href="#">Material Requests</a></li>
     </ul>
     <div class="nav-right">
-      <a id="google-admin-badge" class="nav-admin" href="admin_user_roles.html">Admin <span class="chevron">&#9660;</span></a>
+      <div id="google-admin-badge" class="nav-admin-wrap" style="display:none">
+        <button class="nav-admin" id="admin-dropdown-toggle" type="button">Admin <span class="chevron">&#9660;</span></button>
+        <div class="nav-admin-menu" id="admin-dropdown-menu">
+          <a href="/admin_user_roles.html">User Roles</a>
+          <a href="/admin_role_permissions.html">Role Permissions</a>
+        </div>
+      </div>
       <div class="nav-avatar" id="google-user-initials">VP</div>
       <a href="/auth/logout" class="nav-signout" id="google-signout">Sign out</a>
     </div>
@@ -42,8 +48,8 @@
               <tr>
                 <th>Role</th>
                 <th>Home Page</th>
-                <th>Add Projects</th>
-                <th>View Projects</th>
+                <th>Add Activities</th>
+                <th>Browse Activities</th>
                 <th>Planning</th>
                 <th>Admin</th>
               </tr>
@@ -119,11 +125,11 @@
     <section class="admin-card">
       <h2>Page Descriptions</h2>
       <ul class="admin-bullets">
-        <li><strong>Homepage:</strong> Main Sewing Room activity hub.</li>
-        <li><strong>Add Projects:</strong> Create and upload new practical activities.</li>
-        <li><strong>View Projects:</strong> Browse and search the full activity library.</li>
-        <li><strong>Planning:</strong> Access planning tools and project scheduling.</li>
-        <li><strong>Admin:</strong> Manage users, roles, permissions, and system settings.</li>
+        <li><strong>Home Page:</strong> Main Sewing Room activity hub page.</li>
+        <li><strong>Add Activities:</strong> Upload and create new practical sewing activities.</li>
+        <li><strong>Browse Activities:</strong> View and search the full activity library.</li>
+        <li><strong>Planning:</strong> Access planning tools for scheduling and project management.</li>
+        <li><strong>Admin:</strong> Administrative functions — user roles, permissions, and system settings.</li>
       </ul>
     </section>
 

@@ -20,7 +20,13 @@
       <li><a href="#">Material Requests</a></li>
     </ul>
     <div class="nav-right">
-      <a id="google-admin-badge" class="nav-admin" href="admin_user_roles.html">Admin <span class="chevron">&#9660;</span></a>
+      <div id="google-admin-badge" class="nav-admin-wrap" style="display:none">
+        <button class="nav-admin" id="admin-dropdown-toggle" type="button">Admin <span class="chevron">&#9660;</span></button>
+        <div class="nav-admin-menu" id="admin-dropdown-menu">
+          <a href="/admin_user_roles.html">User Roles</a>
+          <a href="/admin_role_permissions.html">Role Permissions</a>
+        </div>
+      </div>
       <div class="nav-avatar" id="google-user-initials">VP</div>
       <a href="/auth/logout" class="nav-signout" id="google-signout">Sign out</a>
     </div>

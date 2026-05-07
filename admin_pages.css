@@ -150,7 +150,7 @@ body {
 }
 
 .admin-table thead {
-  background: #e8f1f9;
+  background: #2a6099;
 }
 
 .admin-table th,
@@ -160,6 +160,14 @@ body {
   border-bottom: 1px solid #d7e6f3;
   font-size: 0.85rem;
   color: #2f4e70;
+}
+
+.admin-table th {
+  color: #fff;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
 }
 
 .permissions-table th,
