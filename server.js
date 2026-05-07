@@ -53,33 +53,62 @@ if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
         callbackURL: process.env.GOOGLE_CALLBACK_URL,
       },
-      (_accessToken, _refreshToken, profile, done) => {
-        const email = profile.emails && profile.emails[0] ? profile.emails[0].value.toLowerCase() : null;
-        const domain = email ? email.split('@')[1] : null;
-        const allowedDomain = process.env.GOOGLE_WORKSPACE_DOMAIN;
+      async (_accessToken, _refreshToken, profile, done) => {
+        try {
+          const email = profile.emails && profile.emails[0] ? profile.emails[0].value.toLowerCase() : null;
+          const domain = email ? email.split('@')[1] : null;
+          const allowedDomain = process.env.GOOGLE_WORKSPACE_DOMAIN;
 
-        if (!email) {
-          return done(new Error('No email returned by Google'));
+          if (!email) {
+            return done(new Error('No email returned by Google'));
+          }
+          if (allowedDomain && domain !== allowedDomain) {
+            return done(new Error('Email domain not allowed'));
+          }
+
+          const displayName = profile.displayName || email;
+          const picture = profile.photos && profile.photos[0] ? profile.photos[0].value : null;
+
+          // Keep local users table synced with Google profile data.
+          const userUpsert = await pool.query(
+            `INSERT INTO users (google_id, email, name, picture)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (google_id)
+             DO UPDATE SET email = EXCLUDED.email, name = EXCLUDED.name, picture = EXCLUDED.picture
+             RETURNING id`,
+            [profile.id, email, displayName, picture]
+          );
+
+          const dbUserId = userUpsert.rows[0].id;
+
+          const adminCheck = await pool.query(
+            `SELECT EXISTS (
+               SELECT 1 FROM user_roles ur
+               WHERE ur.user_id = $1 AND LOWER(ur.role) = 'admin'
+             ) AS is_admin_role`,
+            [dbUserId]
+          );
+
+          const isAdmin = ADMIN_EMAILS.includes(email) || adminCheck.rows[0].is_admin_role;
+
+          const initials = displayName
+            .split(' ')
+            .map((p) => p[0])
+            .join('')
+            .slice(0, 2)
+            .toUpperCase();
+
+          return done(null, {
+            googleId: profile.id,
+            dbUserId,
+            email,
+            displayName,
+            initials: initials || 'U',
+            isAdmin,
+          });
+        } catch (err) {
+          return done(err);
         }
-        if (allowedDomain && domain !== allowedDomain) {
-          return done(new Error('Email domain not allowed'));
-        }
-
-        const displayName = profile.displayName || email;
-        const initials = displayName
-          .split(' ')
-          .map((p) => p[0])
-          .join('')
-          .slice(0, 2)
-          .toUpperCase();
-
-        return done(null, {
-          googleId: profile.id,
-          email,
-          displayName,
-          initials: initials || 'U',
-          isAdmin: ADMIN_EMAILS.includes(email),
-        });
       }
     )
   );
@@ -149,6 +178,170 @@ app.get('/admin_user_roles.html', requireAuth, requireAdmin, (req, res) => {
 });
 app.get('/admin_role_permissions.html', requireAuth, requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin_role_permissions.html'));
+});
+
+// ── Admin API: user roles ─────────────────────────────────
+app.get('/api/admin/user-roles', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT
+         u.id AS user_id,
+         u.email,
+         u.name,
+         COALESCE(MAX(ur.user_type), 'Staff') AS user_type,
+         COALESCE(
+           ARRAY_REMOVE(ARRAY_AGG(DISTINCT ur.role), NULL),
+           ARRAY[]::varchar[]
+         ) AS roles
+       FROM users u
+       LEFT JOIN user_roles ur ON ur.user_id = u.id
+       GROUP BY u.id, u.email, u.name
+       ORDER BY u.email ASC`
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('GET /api/admin/user-roles error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.post('/api/admin/user-roles', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { email, role, user_type } = req.body;
+
+    if (!email || !role) {
+      return res.status(400).json({ error: 'Missing required fields: email, role' });
+    }
+
+    const userRow = await pool.query(
+      'SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1',
+      [email.trim()]
+    );
+
+    if (!userRow.rows.length) {
+      return res.status(404).json({ error: 'User not found in users table. Ask the user to sign in first.' });
+    }
+
+    const userId = userRow.rows[0].id;
+
+    // Avoid duplicate same-role assignment for same user.
+    const existing = await pool.query(
+      'SELECT id FROM user_roles WHERE user_id = $1 AND LOWER(role) = LOWER($2) LIMIT 1',
+      [userId, role.trim()]
+    );
+
+    if (existing.rows.length) {
+      return res.json({ success: true, message: 'Role already assigned' });
+    }
+
+    await pool.query(
+      `INSERT INTO user_roles (user_id, role, user_type, assigned_by, assigned_at)
+       VALUES ($1, $2, $3, $4, NOW())`,
+      [
+        userId,
+        role.trim(),
+        user_type ? user_type.trim() : null,
+        req.user.dbUserId || null,
+      ]
+    );
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('POST /api/admin/user-roles error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.delete('/api/admin/user-roles', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { email, role } = req.body;
+
+    if (!email || !role) {
+      return res.status(400).json({ error: 'Missing required fields: email, role' });
+    }
+
+    const del = await pool.query(
+      `DELETE FROM user_roles
+       WHERE user_id = (SELECT id FROM users WHERE LOWER(email) = LOWER($1) LIMIT 1)
+         AND LOWER(role) = LOWER($2)`,
+      [email.trim(), role.trim()]
+    );
+
+    res.json({ success: true, deleted: del.rowCount });
+  } catch (err) {
+    console.error('DELETE /api/admin/user-roles error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// ── Admin API: role permissions ───────────────────────────
+app.get('/api/admin/role-permissions', requireAuth, requireAdmin, async (_req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT role_name, recipes, add_recipes, inventory, planning, admin
+       FROM role_permissions
+       WHERE role_name IS NOT NULL
+       ORDER BY role_name ASC`
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error('GET /api/admin/role-permissions error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.put('/api/admin/role-permissions', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const { roles } = req.body;
+    if (!Array.isArray(roles)) {
+      return res.status(400).json({ error: 'roles array is required' });
+    }
+
+    for (const r of roles) {
+      if (!r.role_name) continue;
+
+      const update = await pool.query(
+        `UPDATE role_permissions
+         SET recipes = $2,
+             add_recipes = $3,
+             inventory = $4,
+             planning = $5,
+             admin = $6,
+             updated_at = NOW()
+         WHERE LOWER(role_name) = LOWER($1)`,
+        [
+          r.role_name,
+          !!r.recipes,
+          !!r.add_recipes,
+          !!r.inventory,
+          !!r.planning,
+          !!r.admin,
+        ]
+      );
+
+      if (update.rowCount === 0) {
+        await pool.query(
+          `INSERT INTO role_permissions (role_name, recipes, add_recipes, inventory, planning, admin, created_at, updated_at)
+           VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+          [
+            r.role_name,
+            !!r.recipes,
+            !!r.add_recipes,
+            !!r.inventory,
+            !!r.planning,
+            !!r.admin,
+          ]
+        );
+      }
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('PUT /api/admin/role-permissions error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
 });
 
 // Protect admin API endpoint
