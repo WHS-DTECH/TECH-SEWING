@@ -36,6 +36,7 @@ a { text-decoration: none; color: inherit; }
   list-style: none;
   gap: 0.1rem;
   flex: 1;
+  justify-content: center;
 }
 
 .nav-links a {
