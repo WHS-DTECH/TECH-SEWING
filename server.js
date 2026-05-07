@@ -13,6 +13,10 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
   .split(',')
   .map((v) => v.trim().toLowerCase())
   .filter(Boolean);
+const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
+const GOOGLE_CLIENT_SECRET = (process.env.GOOGLE_CLIENT_SECRET || '').trim();
+const GOOGLE_CALLBACK_URL = (process.env.GOOGLE_CALLBACK_URL || '').trim();
+const GOOGLE_WORKSPACE_DOMAIN = (process.env.GOOGLE_WORKSPACE_DOMAIN || '').trim().toLowerCase();
 
 // ── Database connection ──────────────────────────────────
 const pool = new Pool({
@@ -52,28 +56,28 @@ function maskClientId(clientId) {
   return `${prefix.slice(0, 12)}...apps.googleusercontent.com`;
 }
 
-if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL) {
+if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL) {
   console.log(
     '[google-auth] configured',
     JSON.stringify({
-      clientId: maskClientId(process.env.GOOGLE_CLIENT_ID),
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-      workspaceDomain: process.env.GOOGLE_WORKSPACE_DOMAIN || null,
+      clientId: maskClientId(GOOGLE_CLIENT_ID),
+      callbackURL: GOOGLE_CALLBACK_URL,
+      workspaceDomain: GOOGLE_WORKSPACE_DOMAIN || null,
     })
   );
 
   passport.use(
     new GoogleStrategy(
       {
-        clientID: process.env.GOOGLE_CLIENT_ID,
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: process.env.GOOGLE_CALLBACK_URL,
+        clientID: GOOGLE_CLIENT_ID,
+        clientSecret: GOOGLE_CLIENT_SECRET,
+        callbackURL: GOOGLE_CALLBACK_URL,
       },
       async (_accessToken, _refreshToken, profile, done) => {
         try {
           const email = profile.emails && profile.emails[0] ? profile.emails[0].value.toLowerCase() : null;
           const domain = email ? email.split('@')[1] : null;
-          const allowedDomain = process.env.GOOGLE_WORKSPACE_DOMAIN;
+          const allowedDomain = GOOGLE_WORKSPACE_DOMAIN;
 
           if (!email) {
             return done(new Error('No email returned by Google'));
@@ -151,8 +155,8 @@ app.get('/auth/google', (req, res, next) => {
     JSON.stringify({
       host: req.get('host'),
       forwardedProto: req.get('x-forwarded-proto') || null,
-      callbackURL: process.env.GOOGLE_CALLBACK_URL,
-      clientId: maskClientId(process.env.GOOGLE_CLIENT_ID),
+      callbackURL: GOOGLE_CALLBACK_URL,
+      clientId: maskClientId(GOOGLE_CLIENT_ID),
     })
   );
 
