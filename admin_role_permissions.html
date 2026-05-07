@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Role Permissions Management - Sewing Room</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin_pages.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <div class="nav-brand">SEWING ROOM</div>
+    <ul class="nav-links">
+      <li><a href="index.html">Hub Home</a></li>
+      <li><a href="#">Browse Activities</a></li>
+      <li><a href="#">Project Kits</a></li>
+      <li><a href="#">Safety Docs</a></li>
+      <li><a href="#">Machine Booking</a></li>
+      <li><a href="#">Material Requests</a></li>
+    </ul>
+    <div class="nav-right">
+      <div class="nav-admin">Admin <span class="chevron">&#9660;</span></div>
+      <div class="nav-avatar" id="google-user-initials">VP</div>
+      <a href="#" class="nav-signout" id="google-signout">Sign out</a>
+    </div>
+  </nav>
+
+  <main class="admin-page-wrap">
+    <section class="admin-page-head">
+      <div>
+        <h1>Role Permissions Management</h1>
+        <p>Control which pages each role can access. Check a box to grant access, uncheck to remove access.</p>
+      </div>
+      <a class="admin-back-btn" href="admin_user_roles.html">&#8592; Back to Admin</a>
+    </section>
+
+    <section class="admin-card">
+      <form id="permissions-form">
+        <div class="admin-table-wrap">
+          <table class="admin-table permissions-table">
+            <thead>
+              <tr>
+                <th>Role</th>
+                <th>Home Page</th>
+                <th>Add Projects</th>
+                <th>View Projects</th>
+                <th>Planning</th>
+                <th>Admin</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Admin</td>
+                <td><input type="checkbox" checked disabled /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" checked /></td>
+              </tr>
+              <tr>
+                <td>Lead Teacher</td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+              </tr>
+              <tr>
+                <td>Teacher</td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" /></td>
+              </tr>
+              <tr>
+                <td>Technician</td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" /></td>
+              </tr>
+              <tr>
+                <td>Staff</td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" /></td>
+              </tr>
+              <tr>
+                <td>Student</td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" /></td>
+              </tr>
+              <tr>
+                <td>Public Access</td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" checked /></td>
+                <td><input type="checkbox" /></td>
+                <td><input type="checkbox" /></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="actions-row">
+          <button class="admin-primary-btn" type="submit">Save Changes</button>
+          <button class="admin-reset-btn" type="button" id="permissions-reset">Reset to Defaults</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="admin-card">
+      <h2>Page Descriptions</h2>
+      <ul class="admin-bullets">
+        <li><strong>Homepage:</strong> Main Sewing Room activity hub.</li>
+        <li><strong>Add Projects:</strong> Create and upload new practical activities.</li>
+        <li><strong>View Projects:</strong> Browse and search the full activity library.</li>
+        <li><strong>Planning:</strong> Access planning tools and project scheduling.</li>
+        <li><strong>Admin:</strong> Manage users, roles, permissions, and system settings.</li>
+      </ul>
+    </section>
+
+    <section class="admin-card notice-card">
+      <h2>Important Notes</h2>
+      <ul class="admin-bullets">
+        <li><strong>Admin role</strong> should always have access to all pages.</li>
+        <li><strong>Public Access</strong> is assigned to all logged-out visitors by default.</li>
+        <li>Additional roles are managed in <a href="admin_user_roles.html">User Role Management</a>.</li>
+        <li>When connected to Google login, changes should apply on the user's next token refresh.</li>
+      </ul>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="footer-suggest">
+      <a href="suggest_activity.html" class="btn-footer-suggest">&#9988; Suggest an Activity</a>
+    </div>
+    <p>&copy; 2026 Westland High School &mdash; Sewing Room &amp; Textiles Hub</p>
+  </footer>
+
+  <script src="admin_role_permissions.js"></script>
+</body>
+</html>
