@@ -45,7 +45,23 @@ app.use(passport.session());
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
 
+function maskClientId(clientId) {
+  if (!clientId) return 'missing';
+  const parts = clientId.split('.apps.googleusercontent.com');
+  const prefix = parts[0] || clientId;
+  return `${prefix.slice(0, 12)}...apps.googleusercontent.com`;
+}
+
 if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET && process.env.GOOGLE_CALLBACK_URL) {
+  console.log(
+    '[google-auth] configured',
+    JSON.stringify({
+      clientId: maskClientId(process.env.GOOGLE_CLIENT_ID),
+      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      workspaceDomain: process.env.GOOGLE_WORKSPACE_DOMAIN || null,
+    })
+  );
+
   passport.use(
     new GoogleStrategy(
       {
@@ -129,6 +145,17 @@ app.get('/auth/google', (req, res, next) => {
   if (!passport._strategy('google')) {
     return res.status(500).send('Google auth is not configured yet.');
   }
+
+  console.log(
+    '[google-auth] start',
+    JSON.stringify({
+      host: req.get('host'),
+      forwardedProto: req.get('x-forwarded-proto') || null,
+      callbackURL: process.env.GOOGLE_CALLBACK_URL,
+      clientId: maskClientId(process.env.GOOGLE_CLIENT_ID),
+    })
+  );
+
   return passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 });
 
