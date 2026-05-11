@@ -4,9 +4,11 @@ const express = require('express');
 const { Pool }  = require('pg');
 const path      = require('path');
 const fs        = require('fs');
+const crypto    = require('crypto');
 const session   = require('express-session');
 const passport  = require('passport');
 const multer    = require('multer');
+const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app  = express();
@@ -19,6 +21,11 @@ const GOOGLE_CLIENT_ID = (process.env.GOOGLE_CLIENT_ID || '').trim();
 const GOOGLE_CLIENT_SECRET = (process.env.GOOGLE_CLIENT_SECRET || '').trim();
 const GOOGLE_CALLBACK_URL = (process.env.GOOGLE_CALLBACK_URL || '').trim();
 const GOOGLE_WORKSPACE_DOMAIN = (process.env.GOOGLE_WORKSPACE_DOMAIN || '').trim().toLowerCase();
+const OBJECT_STORAGE_ENDPOINT = (process.env.OBJECT_STORAGE_ENDPOINT || '').trim();
+const OBJECT_STORAGE_BUCKET = (process.env.OBJECT_STORAGE_BUCKET || '').trim();
+const OBJECT_STORAGE_ACCESS_KEY_ID = (process.env.OBJECT_STORAGE_ACCESS_KEY_ID || '').trim();
+const OBJECT_STORAGE_SECRET_ACCESS_KEY = (process.env.OBJECT_STORAGE_SECRET_ACCESS_KEY || '').trim();
+const OBJECT_STORAGE_PUBLIC_BASE_URL = (process.env.OBJECT_STORAGE_PUBLIC_BASE_URL || '').trim();
 
 // ── Database connection ──────────────────────────────────
 const pool = new Pool({
@@ -28,16 +35,42 @@ const pool = new Pool({
 
 const uploadsDir = path.join(__dirname, 'images', 'uploads');
 
+const objectStorageEnabled = !!(
+  OBJECT_STORAGE_ENDPOINT &&
+  OBJECT_STORAGE_BUCKET &&
+  OBJECT_STORAGE_ACCESS_KEY_ID &&
+  OBJECT_STORAGE_SECRET_ACCESS_KEY &&
+  OBJECT_STORAGE_PUBLIC_BASE_URL
+);
+
+const s3Client = objectStorageEnabled
+  ? new S3Client({
+      region: 'auto',
+      endpoint: OBJECT_STORAGE_ENDPOINT,
+      forcePathStyle: true,
+      credentials: {
+        accessKeyId: OBJECT_STORAGE_ACCESS_KEY_ID,
+        secretAccessKey: OBJECT_STORAGE_SECRET_ACCESS_KEY,
+      },
+    })
+  : null;
+
+function fileExtFromMime(mimeType) {
+  const map = {
+    'image/jpeg': '.jpg',
+    'image/jpg': '.jpg',
+    'image/png': '.png',
+  };
+  return map[String(mimeType || '').toLowerCase()] || null;
+}
+
+function createImageFileName(mimeType) {
+  const ext = fileExtFromMime(mimeType) || '.jpg';
+  return `activity-${Date.now()}-${crypto.randomUUID()}${ext}`;
+}
+
 const imageUpload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, uploadsDir),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname || '').toLowerCase();
-      const safeExt = ext === '.jpeg' ? '.jpg' : ext;
-      const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-      cb(null, `activity-${unique}${safeExt}`);
-    },
-  }),
+  storage: multer.memoryStorage(),
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (_req, file, cb) => {
     const allowed = new Set(['image/png', 'image/jpeg', 'image/jpg']);
@@ -712,17 +745,52 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
 
 app.post('/api/admin/upload-image', requireAuth, requireUploadPermission, (req, res) => {
   imageUpload.single('image')(req, res, (err) => {
+    const finish = async () => {
+      if (!req.file) {
+        return res.status(400).json({ error: 'No image file received' });
+      }
+
+      const fileName = createImageFileName(req.file.mimetype);
+
+      if (objectStorageEnabled && s3Client) {
+        try {
+          const key = `activities/${fileName}`;
+          await s3Client.send(
+            new PutObjectCommand({
+              Bucket: OBJECT_STORAGE_BUCKET,
+              Key: key,
+              Body: req.file.buffer,
+              ContentType: req.file.mimetype,
+            })
+          );
+
+          const base = OBJECT_STORAGE_PUBLIC_BASE_URL.replace(/\/$/, '');
+          return res.json({ success: true, imageUrl: `${base}/${key}` });
+        } catch (uploadErr) {
+          console.error('Object storage upload error:', uploadErr.message);
+          return res.status(500).json({ error: 'Could not upload image to object storage' });
+        }
+      }
+
+      try {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+        fs.writeFileSync(path.join(uploadsDir, fileName), req.file.buffer);
+        return res.json({ success: true, imageUrl: `/images/uploads/${fileName}` });
+      } catch (writeErr) {
+        console.error('Local upload fallback error:', writeErr.message);
+        return res.status(500).json({ error: 'Could not store uploaded image' });
+      }
+    };
+
     if (err) {
       const msg = err.message || 'Upload failed';
       return res.status(400).json({ error: msg });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ error: 'No image file received' });
-    }
-
-    const imageUrl = `/images/uploads/${req.file.filename}`;
-    return res.json({ success: true, imageUrl });
+    finish().catch((unhandledErr) => {
+      console.error('Upload handler error:', unhandledErr.message);
+      return res.status(500).json({ error: 'Upload failed' });
+    });
   });
 });
 
@@ -778,6 +846,12 @@ app.use((err, req, res, _next) => {
 // ── Start ────────────────────────────────────────────────
 async function startServer() {
   try {
+    if (objectStorageEnabled) {
+      console.log('[storage] object storage enabled');
+    } else {
+      console.log('[storage] object storage not configured, using local uploads fallback');
+    }
+
     fs.mkdirSync(uploadsDir, { recursive: true });
     await ensureSchema();
     app.listen(PORT, () => {

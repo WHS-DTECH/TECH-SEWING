@@ -353,6 +353,7 @@ a { text-decoration: none; color: inherit; }
 .tag-beginner     { background: #d9f5e6; color: #1a6640; }
 .tag-intermediate { background: #d6ecff; color: #0a4b82; }
 .tag-advanced     { background: #ffe4cc; color: #8a3a00; }
+.tag-teacher-view { background: #e8defc; color: #5c2d93; border: 1px solid #cdb7f6; }
 
 /* ─── Library header ────────────────────────────────────── */
 .library-header {

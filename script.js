@@ -30,6 +30,7 @@ function buildCard(a) {
           <span class="tag">${escHtml(a.year_level)}</span>
           <span class="tag">${escHtml(a.type)}</span>
           <span class="tag">${escHtml(a.activity_category || 'Practice')}</span>
+          ${a.canViewTeacherCard ? '<span class="tag tag-teacher-view">Teacher View</span>' : ''}
           <span class="tag">${durationLabel}</span>
           <span class="tag ${diffClass}">${escHtml(a.difficulty)}</span>
         </div>
