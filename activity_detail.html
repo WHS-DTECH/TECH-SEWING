@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Activity Detail - Sewing Room</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a class="nav-brand" href="/index.html">SEWING ROOM</a>
+    <ul class="nav-links">
+      <li><a href="/index.html">Browse Activities</a></li>
+      <li><a href="#">Project Kits</a></li>
+      <li><a href="#">Safety Docs</a></li>
+      <li><a href="#">Machine Booking</a></li>
+      <li><a href="#">Material Requests</a></li>
+    </ul>
+    <div class="nav-right">
+      <div id="google-admin-badge" class="nav-admin-wrap" style="display:none">
+        <button class="nav-admin" id="admin-dropdown-toggle" type="button">Admin <span class="chevron">&#9660;</span></button>
+        <div class="nav-admin-menu" id="admin-dropdown-menu">
+          <a href="/admin_user_roles.html">User Roles</a>
+          <a href="/admin_role_permissions.html">Role Permissions</a>
+          <a href="/admin_upload_activity.html">Upload Activity</a>
+        </div>
+      </div>
+      <div class="nav-avatar" id="google-user-initials">VP</div>
+      <a href="/auth/logout" class="nav-signout" id="google-signout">Sign out</a>
+    </div>
+  </nav>
+
+  <main class="detail-wrap" id="detail-wrap">
+    <p style="color:#6d7f92;font-size:0.9rem;padding:1rem 0;">Loading activity...</p>
+  </main>
+
+  <script src="auth-client.js"></script>
+  <script src="activity_detail.js"></script>
+</body>
+</html>

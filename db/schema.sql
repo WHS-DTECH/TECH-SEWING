@@ -11,6 +11,10 @@ CREATE TABLE IF NOT EXISTS activities (
   difficulty     VARCHAR(20)   NOT NULL
                    CHECK (difficulty IN ('Beginner','Intermediate','Advanced')),
   description    TEXT,
+  outcome_image_url TEXT,
+  resources      TEXT,
+  equipment      TEXT,
+  instructions   TEXT,
   color          VARCHAR(30)   NOT NULL DEFAULT 'color-rose',
   is_this_week   BOOLEAN       NOT NULL DEFAULT FALSE,
   created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()

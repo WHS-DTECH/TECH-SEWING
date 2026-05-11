@@ -10,7 +10,7 @@ function buildCard(a) {
   const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
 
   return `
-    <div class="activity-card ${a.color}"
+    <a class="activity-card activity-card-link ${a.color}" href="activity_detail.html?id=${Number(a.id)}"
          data-name="${escHtml(a.name)}"
          data-year="${escHtml(a.year_level)}"
          data-type="${escHtml(a.type)}"
@@ -32,7 +32,7 @@ function buildCard(a) {
         <h4>${escHtml(a.name)}</h4>
         <p>${escHtml(a.description || '')}</p>
       </div>
-    </div>`;
+    </a>`;
 }
 
 function escHtml(str) {

@@ -24,6 +24,16 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+async function ensureSchema() {
+  await pool.query(`
+    ALTER TABLE activities
+    ADD COLUMN IF NOT EXISTS outcome_image_url TEXT,
+    ADD COLUMN IF NOT EXISTS resources TEXT,
+    ADD COLUMN IF NOT EXISTS equipment TEXT,
+    ADD COLUMN IF NOT EXISTS instructions TEXT
+  `);
+}
+
 // ── Middleware ───────────────────────────────────────────
 app.use(express.json());
 
@@ -209,6 +219,9 @@ app.get('/admin_user_roles.html', requireAuth, requireAdmin, (req, res) => {
 });
 app.get('/admin_role_permissions.html', requireAuth, requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin_role_permissions.html'));
+});
+app.get('/admin_upload_activity.html', requireAuth, requireAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin_upload_activity.html'));
 });
 
 // ── Admin API: user roles ─────────────────────────────────
@@ -432,6 +445,106 @@ app.get('/api/activities', async (req, res) => {
   }
 });
 
+app.get('/api/activities/:id', async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({ error: 'Invalid activity id' });
+    }
+
+    const result = await pool.query('SELECT * FROM activities WHERE id = $1 LIMIT 1', [id]);
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Activity not found' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error('GET /api/activities/:id error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.post('/api/admin/activities', requireAuth, requireAdmin, async (req, res) => {
+  try {
+    const {
+      name,
+      year_level,
+      type,
+      duration_hours,
+      difficulty,
+      description,
+      color,
+      is_this_week,
+      outcome_image_url,
+      resources,
+      equipment,
+      instructions,
+    } = req.body;
+
+    if (!name || !year_level || !type || !duration_hours || !difficulty) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const allowedDifficulty = new Set(['Beginner', 'Intermediate', 'Advanced']);
+    if (!allowedDifficulty.has(String(difficulty))) {
+      return res.status(400).json({ error: 'Invalid difficulty' });
+    }
+
+    const allowedColors = new Set([
+      'color-rose',
+      'color-teal',
+      'color-sage',
+      'color-lavender',
+      'color-coral',
+      'color-gold',
+    ]);
+
+    const safeColor = allowedColors.has(String(color)) ? color : 'color-rose';
+    const hours = Number(duration_hours);
+
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+      return res.status(400).json({ error: 'Duration must be between 0 and 24 hours' });
+    }
+
+    const result = await pool.query(
+      `INSERT INTO activities (
+         name,
+         year_level,
+         type,
+         duration_hours,
+         difficulty,
+         description,
+         color,
+         is_this_week,
+         outcome_image_url,
+         resources,
+         equipment,
+         instructions
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       RETURNING id`,
+      [
+        String(name).trim(),
+        String(year_level).trim(),
+        String(type).trim(),
+        hours,
+        String(difficulty).trim(),
+        description ? String(description).trim() : null,
+        safeColor,
+        !!is_this_week,
+        outcome_image_url ? String(outcome_image_url).trim() : null,
+        resources ? String(resources).trim() : null,
+        equipment ? String(equipment).trim() : null,
+        instructions ? String(instructions).trim() : null,
+      ]
+    );
+
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error('POST /api/admin/activities error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // ── POST /api/suggestions ────────────────────────────────
 app.post('/api/suggestions', async (req, res) => {
   try {
@@ -472,6 +585,16 @@ app.post('/api/suggestions', async (req, res) => {
 });
 
 // ── Start ────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`Sewing Room server running on http://localhost:${PORT}`);
-});
+async function startServer() {
+  try {
+    await ensureSchema();
+    app.listen(PORT, () => {
+      console.log(`Sewing Room server running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error('Failed to initialize schema:', err.message);
+    process.exit(1);
+  }
+}
+
+startServer();
