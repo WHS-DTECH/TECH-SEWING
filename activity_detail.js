@@ -112,6 +112,8 @@ async function loadActivity() {
           <div class="detail-meta">
             <span class="detail-chip">${escHtml(a.year_level)}</span>
             <span class="detail-chip">${escHtml(a.type)}</span>
+            <span class="detail-chip teacher-only">${escHtml(durationLabel)}</span>
+            <span class="detail-chip teacher-only">${escHtml(a.difficulty)}</span>
           </div>
           <p class="detail-desc">${escHtml(a.description || 'Practical sewing task for students.')}</p>
           <a class="detail-back" href="/index.html">&#8592; Back to activity library</a>
