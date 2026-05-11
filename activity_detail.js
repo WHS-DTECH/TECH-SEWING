@@ -39,6 +39,17 @@ function instructionsMarkup(activity) {
   `;
 }
 
+function teacherToolbarMarkup(activity) {
+  if (!activity.canViewTeacherCard) return '';
+  return `
+    <div class="teacher-toolbar" id="teacher-toolbar">
+      <span class="teacher-toolbar-label">Teacher View</span>
+      <a class="teacher-edit-link" href="/admin_upload_activity.html?id=${activity.id}">Edit Activity</a>
+      <button class="teacher-toggle-btn" id="student-view-toggle" type="button">Preview as Student</button>
+    </div>
+  `;
+}
+
 function teacherPanelMarkup(activity) {
   if (!activity.canViewTeacherCard) return '';
 
@@ -50,7 +61,7 @@ function teacherPanelMarkup(activity) {
   const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
 
   return `
-    <article class="detail-card">
+    <article class="detail-card teacher-only">
       <h2>Teacher Card</h2>
       <p class="small">Class management information (teacher view only).</p>
       <div class="detail-meta" style="margin-bottom:0.75rem;">
@@ -61,7 +72,6 @@ function teacherPanelMarkup(activity) {
       ${prep.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Preparation</h3>${makeList(prep, false)}` : ''}
       ${assess.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Assessment Focus</h3>${makeList(assess, false)}` : ''}
       ${!hasContent ? '<p class="small" style="color:#666;">No teacher notes yet.</p>' : ''}
-      <a class="teacher-edit-link" href="/admin_upload_activity.html?id=${activity.id}" style="display:block;margin-top:1rem;">Edit Activity</a>
     </article>
   `;
 }
@@ -94,6 +104,7 @@ async function loadActivity() {
     const fallbackImage = defaultImage(a.name);
 
     mount.innerHTML = `
+      ${teacherToolbarMarkup(a)}
       <section class="detail-hero">
         <div class="detail-hero-content">
           <p class="detail-sub">STUDENT SEWING ACTIVITY</p>
@@ -132,6 +143,20 @@ async function loadActivity() {
         ${teacherPanelMarkup(a)}
       </section>
     `;
+
+    const toggleBtn = document.getElementById('student-view-toggle');
+    const toolbar = document.getElementById('teacher-toolbar');
+    if (toggleBtn) {
+      let studentView = false;
+      toggleBtn.addEventListener('click', () => {
+        studentView = !studentView;
+        document.querySelectorAll('.teacher-only').forEach(el => {
+          el.style.display = studentView ? 'none' : '';
+        });
+        if (toolbar) toolbar.classList.toggle('student-view-active', studentView);
+        toggleBtn.textContent = studentView ? 'Back to Teacher View' : 'Preview as Student';
+      });
+    }
   } catch (_err) {
     mount.innerHTML = '<p style="color:#b63a3a;font-size:0.9rem;padding:1rem 0;">Could not load this activity.</p>';
   }
