@@ -401,6 +401,11 @@ app.get('/api/suggestions', requireAuth, requireAdmin, async (req, res) => {
   }
 });
 
+// Favicon requested by browsers at /favicon.ico
+app.get('/favicon.ico', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'images', 'favicon.ico'));
+});
+
 // Serve all static frontend files (html, css, js, etc.)
 app.use(express.static(path.join(__dirname)));
 
@@ -582,6 +587,16 @@ app.post('/api/suggestions', async (req, res) => {
     console.error('POST /api/suggestions error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
+});
+
+app.use((err, req, res, _next) => {
+  console.error('Unhandled error:', err && err.stack ? err.stack : err);
+
+  if (req.path.startsWith('/api/')) {
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+
+  return res.status(500).sendFile(path.join(__dirname, '500.html'));
 });
 
 // ── Start ────────────────────────────────────────────────
