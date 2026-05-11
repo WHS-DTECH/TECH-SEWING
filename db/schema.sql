@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS activities (
   name           VARCHAR(255)  NOT NULL,
   year_level     VARCHAR(20)   NOT NULL,
   type           VARCHAR(50)   NOT NULL,
+  activity_category VARCHAR(20) NOT NULL DEFAULT 'Practice'
+                   CHECK (activity_category IN ('Practice','Assessment')),
   duration_hours NUMERIC(4,1)  NOT NULL,
   difficulty     VARCHAR(20)   NOT NULL
                    CHECK (difficulty IN ('Beginner','Intermediate','Advanced')),

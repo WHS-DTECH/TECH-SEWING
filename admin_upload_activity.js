@@ -53,6 +53,7 @@ if (form) {
       name: document.getElementById('activity-name')?.value?.trim(),
       year_level: document.getElementById('activity-year')?.value,
       type: document.getElementById('activity-type')?.value?.trim(),
+      activity_category: document.getElementById('activity-category')?.value,
       duration_hours: Number(document.getElementById('activity-duration')?.value),
       difficulty: document.getElementById('activity-difficulty')?.value,
       description: document.getElementById('activity-description')?.value?.trim() || null,

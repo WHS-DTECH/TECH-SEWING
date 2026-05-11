@@ -54,7 +54,14 @@ async function ensureSchema() {
     ADD COLUMN IF NOT EXISTS outcome_image_url TEXT,
     ADD COLUMN IF NOT EXISTS resources TEXT,
     ADD COLUMN IF NOT EXISTS equipment TEXT,
-    ADD COLUMN IF NOT EXISTS instructions TEXT
+    ADD COLUMN IF NOT EXISTS instructions TEXT,
+    ADD COLUMN IF NOT EXISTS activity_category VARCHAR(20) DEFAULT 'Practice'
+  `);
+
+  await pool.query(`
+    UPDATE activities
+    SET activity_category = 'Practice'
+    WHERE activity_category IS NULL
   `);
 }
 
@@ -481,10 +488,10 @@ app.get('/favicon.ico', (_req, res) => {
 app.use(express.static(path.join(__dirname)));
 
 // ── GET /api/activities ──────────────────────────────────
-// Query params: ?week=true  ?year=Year+9  ?type=Embroidery  ?sort=az|za|level|duration
+// Query params: ?week=true  ?year=Year+9  ?type=Embroidery  ?category=assessment|practice  ?sort=az|za|level|duration
 app.get('/api/activities', async (req, res) => {
   try {
-    const { week, year, type, sort } = req.query;
+    const { week, year, type, category, sort } = req.query;
 
     const params = [];
     const conditions = [];
@@ -499,6 +506,10 @@ app.get('/api/activities', async (req, res) => {
     if (type) {
       params.push(type);
       conditions.push(`type = $${params.length}`);
+    }
+    if (category && ['assessment', 'practice'].includes(String(category).toLowerCase())) {
+      params.push(String(category).toLowerCase());
+      conditions.push(`LOWER(activity_category) = $${params.length}`);
     }
 
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
@@ -556,6 +567,7 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
       name,
       year_level,
       type,
+      activity_category,
       duration_hours,
       difficulty,
       description,
@@ -586,6 +598,8 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
     ]);
 
     const safeColor = allowedColors.has(String(color)) ? color : 'color-rose';
+    const categoryRaw = String(activity_category || 'Practice').trim().toLowerCase();
+    const safeCategory = categoryRaw === 'assessment' ? 'Assessment' : 'Practice';
     const hours = Number(duration_hours);
 
     if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
@@ -597,6 +611,7 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
          name,
          year_level,
          type,
+         activity_category,
          duration_hours,
          difficulty,
          description,
@@ -606,12 +621,13 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
          resources,
          equipment,
          instructions
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
        RETURNING id`,
       [
         String(name).trim(),
         String(year_level).trim(),
         String(type).trim(),
+        safeCategory,
         hours,
         String(difficulty).trim(),
         description ? String(description).trim() : null,

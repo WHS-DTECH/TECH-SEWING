@@ -27,6 +27,7 @@ function buildCard(a) {
         <div class="tags">
           <span class="tag">${escHtml(a.year_level)}</span>
           <span class="tag">${escHtml(a.type)}</span>
+          <span class="tag">${escHtml(a.activity_category || 'Practice')}</span>
           <span class="tag">${durationLabel}</span>
           <span class="tag ${diffClass}">${escHtml(a.difficulty)}</span>
         </div>
@@ -68,6 +69,7 @@ async function loadThisWeek() {
 const searchInput = document.getElementById('search-input');
 const filterYear  = document.getElementById('filter-year');
 const filterType  = document.getElementById('filter-type');
+const filterCategory = document.getElementById('filter-category');
 const filterSort  = document.getElementById('filter-sort');
 const libGrid     = document.getElementById('library-grid');
 const countBadge  = document.querySelector('.library-count');
@@ -80,9 +82,11 @@ async function loadLibrary() {
     const params = new URLSearchParams();
     const year   = filterYear?.value;
     const type   = filterType?.value;
+    const category = filterCategory?.value;
     const sort   = filterSort?.value || 'az';
     if (year) params.set('year', year);
     if (type) params.set('type', type);
+    if (category) params.set('category', category);
     params.set('sort', sort);
 
     const res  = await fetch('/api/activities?' + params.toString());
@@ -95,6 +99,7 @@ async function loadLibrary() {
       data = data.filter(a =>
         a.name.toLowerCase().includes(q) ||
         a.type.toLowerCase().includes(q) ||
+        (a.activity_category || '').toLowerCase().includes(q) ||
         (a.description || '').toLowerCase().includes(q)
       );
     }
@@ -113,6 +118,7 @@ async function loadLibrary() {
 searchInput?.addEventListener('input',  loadLibrary);
 filterYear?.addEventListener('change',  loadLibrary);
 filterType?.addEventListener('change',  loadLibrary);
+filterCategory?.addEventListener('change', loadLibrary);
 filterSort?.addEventListener('change',  loadLibrary);
 
 // ── Init ──────────────────────────────────────────────────
