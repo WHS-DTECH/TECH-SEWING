@@ -8,6 +8,7 @@ function buildCard(a) {
 
   const hrs = Number(a.duration_hours);
   const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
+  const fallbackImage = defaultImage(a.name);
 
   return `
     <a class="activity-card activity-card-link ${a.color}" href="activity_detail.html?id=${Number(a.id)}"
@@ -22,7 +23,7 @@ function buildCard(a) {
           <p>Sewing Room Activity</p>
         </div>
       </div>
-      ${a.outcome_image_url ? `<div class="card-outcome-image"><img src="${escHtml(a.outcome_image_url)}" alt="${escHtml(a.name)} outcome" loading="lazy" /></div>` : ''}
+      ${a.outcome_image_url ? `<div class="card-outcome-image"><img src="${escHtml(a.outcome_image_url)}" alt="${escHtml(a.name)} outcome" loading="lazy" onerror="this.onerror=null;this.src='${escHtml(fallbackImage)}'" /></div>` : ''}
       <div class="card-body">
         <div class="tags">
           <span class="tag">${escHtml(a.year_level)}</span>
@@ -35,6 +36,11 @@ function buildCard(a) {
         <p>${escHtml(a.description || '')}</p>
       </div>
     </a>`;
+}
+
+function defaultImage(name) {
+  const label = encodeURIComponent(name || 'Sewing Activity');
+  return `https://placehold.co/900x560/e8eef4/23496f?text=${label}`;
 }
 
 function escHtml(str) {

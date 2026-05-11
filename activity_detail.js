@@ -64,6 +64,7 @@ async function loadActivity() {
     const equipment = toLines(a.equipment);
     const hrs = Number(a.duration_hours);
     const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
+    const fallbackImage = defaultImage(a.name);
 
     mount.innerHTML = `
       <section class="detail-hero">
@@ -80,7 +81,7 @@ async function loadActivity() {
           <a class="detail-back" href="/index.html">&#8592; Back to activity library</a>
         </div>
         <div class="detail-image">
-          <img src="${escHtml(a.outcome_image_url || defaultImage(a.name))}" alt="${escHtml(a.name)} outcome" loading="lazy" />
+          <img src="${escHtml(a.outcome_image_url || fallbackImage)}" alt="${escHtml(a.name)} outcome" loading="lazy" onerror="this.onerror=null;this.src='${escHtml(fallbackImage)}'" />
         </div>
       </section>
 
