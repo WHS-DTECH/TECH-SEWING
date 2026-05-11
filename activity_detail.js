@@ -26,6 +26,19 @@ function makeList(items, ordered) {
   return `<${tag} class="${klass}">${items.map((x) => `<li>${escHtml(x)}</li>`).join('')}</${tag}>`;
 }
 
+function instructionsMarkup(activity) {
+  if (activity.canViewInstructions) {
+    return makeList(toLines(activity.instructions), true);
+  }
+
+  return `
+    <div class="detail-lock-note">
+      Instructions are available to signed-in users only.
+      <a href="/auth/google">Sign in with Google</a> to view the full step-by-step method.
+    </div>
+  `;
+}
+
 function defaultImage(name) {
   const label = encodeURIComponent(name || 'Sewing Activity');
   return `https://placehold.co/900x560/e8eef4/23496f?text=${label}`;
@@ -49,8 +62,6 @@ async function loadActivity() {
 
     const resources = toLines(a.resources);
     const equipment = toLines(a.equipment);
-    const instructions = toLines(a.instructions);
-
     const hrs = Number(a.duration_hours);
     const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
 
@@ -89,7 +100,7 @@ async function loadActivity() {
         <article class="detail-card">
           <h2>Instructions</h2>
           <p class="small">Step-by-step method.</p>
-          ${makeList(instructions, true)}
+          ${instructionsMarkup(a)}
         </article>
       </section>
     `;

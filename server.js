@@ -533,7 +533,17 @@ app.get('/api/activities/:id', async (req, res) => {
       return res.status(404).json({ error: 'Activity not found' });
     }
 
-    res.json(result.rows[0]);
+    const activity = result.rows[0];
+    const canViewInstructions = !!(req.isAuthenticated && req.isAuthenticated());
+
+    if (!canViewInstructions) {
+      activity.instructions = null;
+    }
+
+    res.json({
+      ...activity,
+      canViewInstructions,
+    });
   } catch (err) {
     console.error('GET /api/activities/:id error:', err.message);
     res.status(500).json({ error: 'Database error' });

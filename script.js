@@ -22,6 +22,7 @@ function buildCard(a) {
           <p>Sewing Room Activity</p>
         </div>
       </div>
+      ${a.outcome_image_url ? `<div class="card-outcome-image"><img src="${escHtml(a.outcome_image_url)}" alt="${escHtml(a.name)} outcome" loading="lazy" /></div>` : ''}
       <div class="card-body">
         <div class="tags">
           <span class="tag">${escHtml(a.year_level)}</span>
