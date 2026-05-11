@@ -55,6 +55,7 @@ function teacherPanelMarkup(activity) {
       ${classMgmt.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Class Management</h3>${makeList(classMgmt, false)}` : ''}
       ${prep.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Preparation</h3>${makeList(prep, false)}` : ''}
       ${assess.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Assessment Focus</h3>${makeList(assess, false)}` : ''}
+      <a class="teacher-edit-link" href="/admin_upload_activity.html?id=${activity.id}" style="display:block;margin-top:1rem;">Edit Activity</a>
     </article>
   `;
 }
