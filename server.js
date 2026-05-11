@@ -9,6 +9,7 @@ const session   = require('express-session');
 const passport  = require('passport');
 const multer    = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+const { v2: cloudinary } = require('cloudinary');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app  = express();
@@ -26,6 +27,10 @@ const OBJECT_STORAGE_BUCKET = (process.env.OBJECT_STORAGE_BUCKET || '').trim();
 const OBJECT_STORAGE_ACCESS_KEY_ID = (process.env.OBJECT_STORAGE_ACCESS_KEY_ID || '').trim();
 const OBJECT_STORAGE_SECRET_ACCESS_KEY = (process.env.OBJECT_STORAGE_SECRET_ACCESS_KEY || '').trim();
 const OBJECT_STORAGE_PUBLIC_BASE_URL = (process.env.OBJECT_STORAGE_PUBLIC_BASE_URL || '').trim();
+const CLOUDINARY_CLOUD_NAME = (process.env.CLOUDINARY_CLOUD_NAME || '').trim();
+const CLOUDINARY_API_KEY = (process.env.CLOUDINARY_API_KEY || '').trim();
+const CLOUDINARY_API_SECRET = (process.env.CLOUDINARY_API_SECRET || '').trim();
+const CLOUDINARY_UPLOAD_FOLDER = (process.env.CLOUDINARY_UPLOAD_FOLDER || 'sewing-room-activities').trim();
 
 // ── Database connection ──────────────────────────────────
 const pool = new Pool({
@@ -42,6 +47,21 @@ const objectStorageEnabled = !!(
   OBJECT_STORAGE_SECRET_ACCESS_KEY &&
   OBJECT_STORAGE_PUBLIC_BASE_URL
 );
+
+const cloudinaryEnabled = !!(
+  CLOUDINARY_CLOUD_NAME &&
+  CLOUDINARY_API_KEY &&
+  CLOUDINARY_API_SECRET
+);
+
+if (cloudinaryEnabled) {
+  cloudinary.config({
+    cloud_name: CLOUDINARY_CLOUD_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: CLOUDINARY_API_SECRET,
+    secure: true,
+  });
+}
 
 const s3Client = objectStorageEnabled
   ? new S3Client({
@@ -67,6 +87,34 @@ function fileExtFromMime(mimeType) {
 function createImageFileName(mimeType) {
   const ext = fileExtFromMime(mimeType) || '.jpg';
   return `activity-${Date.now()}-${crypto.randomUUID()}${ext}`;
+}
+
+async function uploadToCloudinary(fileBuffer, mimeType, originalFileName) {
+  const publicId = `activity-${Date.now()}-${crypto.randomUUID()}`;
+
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: CLOUDINARY_UPLOAD_FOLDER,
+        resource_type: 'image',
+        public_id: publicId,
+        format: fileExtFromMime(mimeType)?.replace('.', '') || 'jpg',
+        use_filename: false,
+        unique_filename: false,
+        overwrite: false,
+        filename_override: originalFileName || undefined,
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        if (!result || !result.secure_url) {
+          return reject(new Error('Cloudinary did not return a secure URL'));
+        }
+        return resolve(result.secure_url);
+      }
+    );
+
+    stream.end(fileBuffer);
+  });
 }
 
 const imageUpload = multer({
@@ -743,11 +791,130 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
   }
 });
 
+app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({ error: 'Invalid activity id' });
+    }
+
+    const {
+      name,
+      year_level,
+      type,
+      activity_category,
+      duration_hours,
+      difficulty,
+      description,
+      color,
+      is_this_week,
+      outcome_image_url,
+      resources,
+      equipment,
+      instructions,
+      class_management_notes,
+      class_preparation,
+      assessment_focus,
+    } = req.body;
+
+    if (!name || !year_level || !type || !duration_hours || !difficulty) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+
+    const allowedDifficulty = new Set(['Beginner', 'Intermediate', 'Advanced']);
+    if (!allowedDifficulty.has(String(difficulty))) {
+      return res.status(400).json({ error: 'Invalid difficulty' });
+    }
+
+    const allowedColors = new Set([
+      'color-rose',
+      'color-teal',
+      'color-sage',
+      'color-lavender',
+      'color-coral',
+      'color-gold',
+    ]);
+
+    const safeColor = allowedColors.has(String(color)) ? color : 'color-rose';
+    const categoryRaw = String(activity_category || 'Practice').trim().toLowerCase();
+    const safeCategory = categoryRaw === 'assessment' ? 'Assessment' : 'Practice';
+    const hours = Number(duration_hours);
+
+    if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
+      return res.status(400).json({ error: 'Duration must be between 0 and 24 hours' });
+    }
+
+    const result = await pool.query(
+      `UPDATE activities
+       SET name = $2,
+           year_level = $3,
+           type = $4,
+           activity_category = $5,
+           duration_hours = $6,
+           difficulty = $7,
+           description = $8,
+           color = $9,
+           is_this_week = $10,
+           outcome_image_url = $11,
+           resources = $12,
+           equipment = $13,
+           instructions = $14,
+           class_management_notes = $15,
+           class_preparation = $16,
+           assessment_focus = $17
+       WHERE id = $1
+       RETURNING id`,
+      [
+        id,
+        String(name).trim(),
+        String(year_level).trim(),
+        String(type).trim(),
+        safeCategory,
+        hours,
+        String(difficulty).trim(),
+        description ? String(description).trim() : null,
+        safeColor,
+        !!is_this_week,
+        outcome_image_url ? String(outcome_image_url).trim() : null,
+        resources ? String(resources).trim() : null,
+        equipment ? String(equipment).trim() : null,
+        instructions ? String(instructions).trim() : null,
+        class_management_notes ? String(class_management_notes).trim() : null,
+        class_preparation ? String(class_preparation).trim() : null,
+        assessment_focus ? String(assessment_focus).trim() : null,
+      ]
+    );
+
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'Activity not found' });
+    }
+
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error('PUT /api/admin/activities/:id error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 app.post('/api/admin/upload-image', requireAuth, requireUploadPermission, (req, res) => {
   imageUpload.single('image')(req, res, (err) => {
     const finish = async () => {
       if (!req.file) {
         return res.status(400).json({ error: 'No image file received' });
+      }
+
+      if (cloudinaryEnabled) {
+        try {
+          const imageUrl = await uploadToCloudinary(
+            req.file.buffer,
+            req.file.mimetype,
+            req.file.originalname
+          );
+          return res.json({ success: true, imageUrl });
+        } catch (uploadErr) {
+          console.error('Cloudinary upload error:', uploadErr.message);
+          return res.status(500).json({ error: 'Could not upload image to Cloudinary' });
+        }
       }
 
       const fileName = createImageFileName(req.file.mimetype);
@@ -846,10 +1013,12 @@ app.use((err, req, res, _next) => {
 // ── Start ────────────────────────────────────────────────
 async function startServer() {
   try {
-    if (objectStorageEnabled) {
+    if (cloudinaryEnabled) {
+      console.log('[storage] cloudinary enabled');
+    } else if (objectStorageEnabled) {
       console.log('[storage] object storage enabled');
     } else {
-      console.log('[storage] object storage not configured, using local uploads fallback');
+      console.log('[storage] no cloud storage configured, using local uploads fallback');
     }
 
     fs.mkdirSync(uploadsDir, { recursive: true });

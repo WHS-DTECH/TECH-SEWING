@@ -35,14 +35,14 @@
   <main class="admin-page-wrap">
     <section class="admin-page-head">
       <div>
-        <h1>Upload Activity</h1>
-        <p>Create a new activity with an outcome image, resources, equipment, and instructions.</p>
+        <h1 id="activity-page-title">Upload Activity</h1>
+        <p id="activity-page-subtitle">Create a new activity with an outcome image, resources, equipment, and instructions.</p>
       </div>
       <a class="admin-back-btn" href="/index.html">&#8592; Back to Hub</a>
     </section>
 
     <section class="admin-card">
-      <h2>New Activity Details</h2>
+      <h2 id="activity-form-heading">New Activity Details</h2>
       <form id="activity-upload-form" class="admin-form-grid" style="grid-template-columns:1fr 1fr;">
         <div class="field">
           <label for="activity-name">Activity Name</label>
@@ -154,7 +154,7 @@
         </div>
 
         <div class="actions-row" style="grid-column:1 / -1; margin-top: 0.1rem;">
-          <button class="admin-primary-btn" type="submit">Save Activity</button>
+          <button class="admin-primary-btn" id="activity-submit-btn" type="submit">Save Activity</button>
           <a class="admin-reset-btn" href="/index.html" style="display:inline-block; text-decoration:none;">Cancel</a>
         </div>
       </form>

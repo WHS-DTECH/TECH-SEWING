@@ -2,6 +2,14 @@ const form = document.getElementById('activity-upload-form');
 const statusEl = document.getElementById('upload-status');
 const imageFileInput = document.getElementById('activity-image-file');
 const imageUrlInput = document.getElementById('activity-image');
+const pageTitle = document.getElementById('activity-page-title');
+const pageSubtitle = document.getElementById('activity-page-subtitle');
+const formHeading = document.getElementById('activity-form-heading');
+const submitBtn = document.getElementById('activity-submit-btn');
+
+const params = new URLSearchParams(window.location.search);
+const editId = Number(params.get('id'));
+const isEditMode = Number.isInteger(editId) && editId > 0;
 
 function setStatus(msg, isError) {
   if (!statusEl) return;
@@ -44,6 +52,55 @@ if (imageFileInput) {
   });
 }
 
+function setValue(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = value == null ? '' : String(value);
+}
+
+function setChecked(id, value) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.checked = !!value;
+}
+
+async function loadActivityForEdit() {
+  if (!isEditMode) return;
+
+  try {
+    const res = await fetch(`/api/activities/${editId}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load activity');
+
+    setValue('activity-name', data.name);
+    setValue('activity-year', data.year_level);
+    setValue('activity-type', data.type);
+    setValue('activity-category', data.activity_category || 'Practice');
+    setValue('activity-duration', data.duration_hours);
+    setValue('activity-difficulty', data.difficulty);
+    setValue('activity-color', data.color || 'color-rose');
+    setValue('activity-image', data.outcome_image_url || '');
+    setValue('activity-description', data.description || '');
+    setValue('activity-resources', data.resources || '');
+    setValue('activity-equipment', data.equipment || '');
+    setValue('activity-instructions', data.instructions || '');
+    setValue('class-management-notes', data.class_management_notes || '');
+    setValue('class-preparation', data.class_preparation || '');
+    setValue('assessment-focus', data.assessment_focus || '');
+    setChecked('activity-week', data.is_this_week);
+  } catch (err) {
+    setStatus(err.message || 'Could not load activity for editing', true);
+  }
+}
+
+if (isEditMode) {
+  if (pageTitle) pageTitle.textContent = 'Edit Activity';
+  if (pageSubtitle) pageSubtitle.textContent = 'Update an existing activity and save your changes.';
+  if (formHeading) formHeading.textContent = `Edit Activity #${editId}`;
+  if (submitBtn) submitBtn.textContent = 'Update Activity';
+  loadActivityForEdit();
+}
+
 if (form) {
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -69,8 +126,11 @@ if (form) {
     };
 
     try {
-      const res = await fetch('/api/admin/activities', {
-        method: 'POST',
+      const saveUrl = isEditMode ? `/api/admin/activities/${editId}` : '/api/admin/activities';
+      const saveMethod = isEditMode ? 'PUT' : 'POST';
+
+      const res = await fetch(saveUrl, {
+        method: saveMethod,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
@@ -79,10 +139,10 @@ if (form) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not save activity');
 
-      setStatus('Activity saved. Opening preview...', false);
+      setStatus(isEditMode ? 'Activity updated. Opening preview...' : 'Activity saved. Opening preview...', false);
       window.location.href = `/activity_detail.html?id=${data.id}`;
     } catch (err) {
-      setStatus(err.message || 'Could not save activity', true);
+      setStatus(err.message || (isEditMode ? 'Could not update activity' : 'Could not save activity'), true);
     }
   });
 }

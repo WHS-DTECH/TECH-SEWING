@@ -338,6 +338,22 @@ a { text-decoration: none; color: inherit; }
   line-height: 1.45;
 }
 
+.teacher-edit-link {
+  display: inline-block;
+  margin-top: 0.35rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #1e5f9d;
+  background: #e6f1fb;
+  border: 1px solid #b8d2ea;
+  border-radius: 6px;
+  padding: 0.25rem 0.5rem;
+}
+
+.teacher-edit-link:hover {
+  background: #d6e9fa;
+}
+
 /* ─── Tags ──────────────────────────────────────────────── */
 .tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 

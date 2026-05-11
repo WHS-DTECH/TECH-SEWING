@@ -63,6 +63,7 @@ function buildTeacherExtra(a) {
       ${classMgmt ? `<p><strong>Class Mgmt:</strong> ${escHtml(classMgmt)}</p>` : ''}
       ${prep ? `<p><strong>Preparation:</strong> ${escHtml(prep)}</p>` : ''}
       ${assess ? `<p><strong>Assessment:</strong> ${escHtml(assess)}</p>` : ''}
+      <a class="teacher-edit-link" href="/admin_upload_activity.html?id=${Number(a.id)}">Edit Activity</a>
     </div>
   `;
 }
