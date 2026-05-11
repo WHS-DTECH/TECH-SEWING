@@ -46,11 +46,17 @@ function teacherPanelMarkup(activity) {
   const prep = toLines(activity.class_preparation);
   const assess = toLines(activity.assessment_focus);
   const hasContent = classMgmt.length || prep.length || assess.length;
+  const hrs = Number(activity.duration_hours);
+  const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
 
   return `
     <article class="detail-card">
       <h2>Teacher Card</h2>
       <p class="small">Class management information (teacher view only).</p>
+      <div class="detail-meta" style="margin-bottom:0.75rem;">
+        <span class="detail-chip">${escHtml(durationLabel)}</span>
+        <span class="detail-chip">${escHtml(activity.difficulty)}</span>
+      </div>
       ${classMgmt.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Class Management</h3>${makeList(classMgmt, false)}` : ''}
       ${prep.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Preparation</h3>${makeList(prep, false)}` : ''}
       ${assess.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Assessment Focus</h3>${makeList(assess, false)}` : ''}
@@ -95,8 +101,6 @@ async function loadActivity() {
           <div class="detail-meta">
             <span class="detail-chip">${escHtml(a.year_level)}</span>
             <span class="detail-chip">${escHtml(a.type)}</span>
-            <span class="detail-chip">${escHtml(durationLabel)}</span>
-            <span class="detail-chip">${escHtml(a.difficulty)}</span>
           </div>
           <p class="detail-desc">${escHtml(a.description || 'Practical sewing task for students.')}</p>
           <a class="detail-back" href="/index.html">&#8592; Back to activity library</a>
