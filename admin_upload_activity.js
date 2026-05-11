@@ -1,10 +1,47 @@
 const form = document.getElementById('activity-upload-form');
 const statusEl = document.getElementById('upload-status');
+const imageFileInput = document.getElementById('activity-image-file');
+const imageUrlInput = document.getElementById('activity-image');
 
 function setStatus(msg, isError) {
   if (!statusEl) return;
   statusEl.textContent = msg;
   statusEl.style.color = isError ? '#b63a3a' : '#37618a';
+}
+
+async function uploadImageFile(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+
+  const res = await fetch('/api/admin/upload-image', {
+    method: 'POST',
+    credentials: 'include',
+    body: formData,
+  });
+
+  const data = await res.json();
+  if (!res.ok) {
+    throw new Error(data.error || 'Image upload failed');
+  }
+
+  return data.imageUrl;
+}
+
+if (imageFileInput) {
+  imageFileInput.addEventListener('change', async () => {
+    const file = imageFileInput.files && imageFileInput.files[0];
+    if (!file) return;
+
+    setStatus('Uploading image...', false);
+
+    try {
+      const imageUrl = await uploadImageFile(file);
+      if (imageUrlInput) imageUrlInput.value = imageUrl;
+      setStatus('Image uploaded. You can now save the activity.', false);
+    } catch (err) {
+      setStatus(err.message || 'Image upload failed', true);
+    }
+  });
 }
 
 if (form) {

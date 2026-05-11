@@ -3,8 +3,10 @@ require('dotenv').config();
 const express = require('express');
 const { Pool }  = require('pg');
 const path      = require('path');
+const fs        = require('fs');
 const session   = require('express-session');
 const passport  = require('passport');
+const multer    = require('multer');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 
 const app  = express();
@@ -22,6 +24,28 @@ const GOOGLE_WORKSPACE_DOMAIN = (process.env.GOOGLE_WORKSPACE_DOMAIN || '').trim
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: { rejectUnauthorized: false },
+});
+
+const uploadsDir = path.join(__dirname, 'images', 'uploads');
+
+const imageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadsDir),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname || '').toLowerCase();
+      const safeExt = ext === '.jpeg' ? '.jpg' : ext;
+      const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      cb(null, `activity-${unique}${safeExt}`);
+    },
+  }),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowed = new Set(['image/png', 'image/jpeg', 'image/jpg']);
+    if (!allowed.has((file.mimetype || '').toLowerCase())) {
+      return cb(new Error('Only PNG and JPG files are allowed'));
+    }
+    cb(null, true);
+  },
 });
 
 async function ensureSchema() {
@@ -550,6 +574,22 @@ app.post('/api/admin/activities', requireAuth, requireAdmin, async (req, res) =>
   }
 });
 
+app.post('/api/admin/upload-image', requireAuth, requireAdmin, (req, res) => {
+  imageUpload.single('image')(req, res, (err) => {
+    if (err) {
+      const msg = err.message || 'Upload failed';
+      return res.status(400).json({ error: msg });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file received' });
+    }
+
+    const imageUrl = `/images/uploads/${req.file.filename}`;
+    return res.json({ success: true, imageUrl });
+  });
+});
+
 // ── POST /api/suggestions ────────────────────────────────
 app.post('/api/suggestions', async (req, res) => {
   try {
@@ -602,6 +642,7 @@ app.use((err, req, res, _next) => {
 // ── Start ────────────────────────────────────────────────
 async function startServer() {
   try {
+    fs.mkdirSync(uploadsDir, { recursive: true });
     await ensureSchema();
     app.listen(PORT, () => {
       console.log(`Sewing Room server running on http://localhost:${PORT}`);
