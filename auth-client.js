@@ -2,6 +2,7 @@
   const signoutLink = document.getElementById('google-signout');
   const avatar = document.getElementById('google-user-initials');
   const adminBadge = document.getElementById('google-admin-badge');
+  const uploadNavItem = document.getElementById('nav-upload-activity-item');
 
   if (!signoutLink || !avatar) return;
 
@@ -14,6 +15,7 @@
       signoutLink.textContent = 'Sign in';
       signoutLink.setAttribute('href', '/auth/google');
       if (adminBadge) adminBadge.style.display = 'none';
+      if (uploadNavItem) uploadNavItem.style.display = 'none';
       return;
     }
 
@@ -28,11 +30,16 @@
         adminBadge.style.display = 'none';
       }
     }
+
+    if (uploadNavItem) {
+      uploadNavItem.style.display = data.user.canUploadActivity ? 'list-item' : 'none';
+    }
   } catch (_err) {
     avatar.textContent = 'G';
     signoutLink.textContent = 'Sign in';
     signoutLink.setAttribute('href', '/auth/google');
     if (adminBadge) adminBadge.style.display = 'none';
+    if (uploadNavItem) uploadNavItem.style.display = 'none';
   }
 })();
 

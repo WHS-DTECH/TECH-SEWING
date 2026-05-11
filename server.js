@@ -178,6 +178,45 @@ function requireAdmin(req, res, next) {
   return res.status(403).send('Access denied');
 }
 
+async function hasRolePermission(userId, permissionColumn) {
+  const allowedColumns = new Set(['recipes', 'add_recipes', 'inventory', 'planning', 'admin']);
+  if (!allowedColumns.has(permissionColumn)) return false;
+
+  const result = await pool.query(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM user_roles ur
+       JOIN role_permissions rp ON LOWER(rp.role_name) = LOWER(ur.role)
+       WHERE ur.user_id = $1 AND COALESCE(rp.${permissionColumn}, FALSE) = TRUE
+     ) AS allowed`,
+    [userId]
+  );
+
+  return !!result.rows[0]?.allowed;
+}
+
+async function userCanUploadActivity(user) {
+  if (!user || !user.dbUserId) return false;
+  if (user.isAdmin) return true;
+  return hasRolePermission(user.dbUserId, 'add_recipes');
+}
+
+async function requireUploadPermission(req, res, next) {
+  try {
+    if (!(req.isAuthenticated && req.isAuthenticated() && req.user)) {
+      return res.status(401).send('Authentication required');
+    }
+
+    if (await userCanUploadActivity(req.user)) {
+      return next();
+    }
+
+    return res.status(403).send('Access denied');
+  } catch (err) {
+    return next(err);
+  }
+}
+
 // ── Auth routes ───────────────────────────────────────────
 app.get('/auth/google', (req, res, next) => {
   if (!passport._strategy('google')) {
@@ -221,9 +260,16 @@ app.get('/auth/logout', (req, res, next) => {
   });
 });
 
-app.get('/api/me', (req, res) => {
+app.get('/api/me', async (req, res) => {
   if (!(req.isAuthenticated && req.isAuthenticated())) {
     return res.json({ authenticated: false });
+  }
+
+  let canUploadActivity = false;
+  try {
+    canUploadActivity = await userCanUploadActivity(req.user);
+  } catch (err) {
+    console.error('GET /api/me permission check error:', err.message);
   }
 
   return res.json({
@@ -233,6 +279,7 @@ app.get('/api/me', (req, res) => {
       displayName: req.user.displayName,
       initials: req.user.initials,
       isAdmin: !!req.user.isAdmin,
+      canUploadActivity: !!canUploadActivity,
     },
   });
 });
@@ -244,7 +291,7 @@ app.get('/admin_user_roles.html', requireAuth, requireAdmin, (req, res) => {
 app.get('/admin_role_permissions.html', requireAuth, requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin_role_permissions.html'));
 });
-app.get('/admin_upload_activity.html', requireAuth, requireAdmin, (req, res) => {
+app.get('/admin_upload_activity.html', requireAuth, requireUploadPermission, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin_upload_activity.html'));
 });
 
@@ -493,7 +540,7 @@ app.get('/api/activities/:id', async (req, res) => {
   }
 });
 
-app.post('/api/admin/activities', requireAuth, requireAdmin, async (req, res) => {
+app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (req, res) => {
   try {
     const {
       name,
@@ -574,7 +621,7 @@ app.post('/api/admin/activities', requireAuth, requireAdmin, async (req, res) =>
   }
 });
 
-app.post('/api/admin/upload-image', requireAuth, requireAdmin, (req, res) => {
+app.post('/api/admin/upload-image', requireAuth, requireUploadPermission, (req, res) => {
   imageUpload.single('image')(req, res, (err) => {
     if (err) {
       const msg = err.message || 'Upload failed';

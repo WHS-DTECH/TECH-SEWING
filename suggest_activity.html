@@ -14,17 +14,23 @@
 
   <!-- NAV -->
   <nav class="navbar">
-    <div class="nav-brand">SEWING ROOM</div>
+    <a class="nav-brand" href="/index.html">SEWING ROOM</a>
     <ul class="nav-links">
-      <li><a href="index.html">Hub Home</a></li>
       <li><a href="#">Browse Activities</a></li>
+      <li id="nav-upload-activity-item" style="display:none"><a href="/admin_upload_activity.html">Upload Activity</a></li>
       <li><a href="#">Project Kits</a></li>
       <li><a href="#">Safety Docs</a></li>
       <li><a href="#">Machine Booking</a></li>
       <li><a href="#">Material Requests</a></li>
     </ul>
     <div class="nav-right">
-      <a id="google-admin-badge" class="nav-admin" href="admin_user_roles.html">Admin <span class="chevron">&#9660;</span></a>
+      <div id="google-admin-badge" class="nav-admin-wrap" style="display:none">
+        <button class="nav-admin" id="admin-dropdown-toggle" type="button">Admin <span class="chevron">&#9660;</span></button>
+        <div class="nav-admin-menu" id="admin-dropdown-menu">
+          <a href="/admin_user_roles.html">User Roles</a>
+          <a href="/admin_role_permissions.html">Role Permissions</a>
+        </div>
+      </div>
       <div class="nav-avatar" id="google-user-initials">VP</div>
       <a href="/auth/logout" class="nav-signout" id="google-signout">Sign out</a>
     </div>
