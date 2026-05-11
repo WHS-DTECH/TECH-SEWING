@@ -143,6 +143,16 @@ async function ensureSchema() {
   `);
 
   await pool.query(`
+    ALTER TABLE activities DROP CONSTRAINT IF EXISTS activities_activity_category_check
+  `);
+
+  await pool.query(`
+    ALTER TABLE activities
+    ADD CONSTRAINT activities_activity_category_check
+    CHECK (activity_category IN ('Practice','Assessment','Skill'))
+  `);
+
+  await pool.query(`
     UPDATE activities
     SET activity_category = 'Practice'
     WHERE activity_category IS NULL
@@ -604,7 +614,7 @@ app.get('/favicon.ico', (_req, res) => {
 app.use(express.static(path.join(__dirname)));
 
 // ── GET /api/activities ──────────────────────────────────
-// Query params: ?week=true  ?year=Year+9  ?type=Embroidery  ?category=assessment|practice  ?sort=az|za|level|duration
+// Query params: ?week=true  ?year=Year+9  ?type=Embroidery  ?category=assessment|practice|skill  ?sort=az|za|level|duration
 app.get('/api/activities', async (req, res) => {
   try {
     const { week, year, type, category, sort } = req.query;
@@ -623,7 +633,7 @@ app.get('/api/activities', async (req, res) => {
       params.push(type);
       conditions.push(`type = $${params.length}`);
     }
-    if (category && ['assessment', 'practice'].includes(String(category).toLowerCase())) {
+    if (category && ['assessment', 'practice', 'skill'].includes(String(category).toLowerCase())) {
       params.push(String(category).toLowerCase());
       conditions.push(`LOWER(activity_category) = $${params.length}`);
     }
@@ -737,7 +747,12 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
 
     const safeColor = allowedColors.has(String(color)) ? color : 'color-rose';
     const categoryRaw = String(activity_category || 'Practice').trim().toLowerCase();
-    const safeCategory = categoryRaw === 'assessment' ? 'Assessment' : 'Practice';
+    const categoryMap = {
+      assessment: 'Assessment',
+      practice: 'Practice',
+      skill: 'Skill',
+    };
+    const safeCategory = categoryMap[categoryRaw] || 'Practice';
     const hours = Number(duration_hours);
 
     if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {
@@ -837,7 +852,12 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
 
     const safeColor = allowedColors.has(String(color)) ? color : 'color-rose';
     const categoryRaw = String(activity_category || 'Practice').trim().toLowerCase();
-    const safeCategory = categoryRaw === 'assessment' ? 'Assessment' : 'Practice';
+    const categoryMap = {
+      assessment: 'Assessment',
+      practice: 'Practice',
+      skill: 'Skill',
+    };
+    const safeCategory = categoryMap[categoryRaw] || 'Practice';
     const hours = Number(duration_hours);
 
     if (!Number.isFinite(hours) || hours <= 0 || hours > 24) {

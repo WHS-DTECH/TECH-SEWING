@@ -1,5 +1,5 @@
--- Run this once against your Neon database to create the tables.
--- In the Neon dashboard: SQL Editor → paste → Run
+-- Run this once against your Render PostgreSQL database to create the tables.
+-- In Render: open your PostgreSQL instance and run this script.
 
 -- Activities ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS activities (

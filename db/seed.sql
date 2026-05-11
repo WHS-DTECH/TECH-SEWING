@@ -1,8 +1,8 @@
--- Seed all activities.
+-- Seed all 14 activities.
 -- Run AFTER schema.sql.  Safe to re-run (uses INSERT … ON CONFLICT DO NOTHING).
 
 -- Add a unique constraint so re-runs are safe
-ALTER TABLE activities ADD CONSTRAINT IF NOT EXISTS activities_name_unique UNIQUE (name);
+ALTER TABLE activities ADD CONSTRAINT activities_name_unique UNIQUE (name);
 
 INSERT INTO activities
   (name, year_level, type, activity_category, duration_hours, difficulty, description, color, is_this_week)
@@ -21,6 +21,6 @@ VALUES
   ('Flat-Felled Seam Practice','Year 12', 'Finishing',      'Skill', 1,   'Advanced',     'Create strong, decorative flat-felled seams used in jeans and workwear construction.',                                                       'color-gold',     FALSE),
   ('Button & Buttonhole',      'Year 10', 'Hand Sewing',    'Skill', 1,   'Intermediate', 'Sew on buttons with a shank and use the machine''s buttonhole foot to create neat, even buttonholes.',                                       'color-rose',     FALSE),
   ('Invisible Zip Insertion',  'Year 12', 'Construction',   'Skill', 2,   'Advanced',     'Install an invisible zip into a seam using a specialist foot for a professional, hidden closure.',                                           'color-lavender', FALSE)
-ON CONFLICT (name) DO UPDATE SET
-  activity_category = EXCLUDED.activity_category,
-  is_this_week      = EXCLUDED.is_this_week;
+ON CONFLICT (name) DO UPDATE
+SET activity_category = EXCLUDED.activity_category,
+    is_this_week = EXCLUDED.is_this_week;
