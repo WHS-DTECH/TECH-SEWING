@@ -314,6 +314,30 @@ a { text-decoration: none; color: inherit; }
 .card-body h4 { font-size: 0.9rem; font-weight: 700; color: #1e1e2e; }
 .card-body p  { font-size: 0.78rem; color: #5a5a72; line-height: 1.5; }
 
+.teacher-extra {
+  margin-top: 0.35rem;
+  border: 1px solid #d8e3ef;
+  background: #f3f8fd;
+  border-radius: 8px;
+  padding: 0.5rem 0.55rem;
+}
+
+.teacher-extra-title {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #2f5f8d;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 0.2rem;
+}
+
+.teacher-extra p {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #355674;
+  line-height: 1.45;
+}
+
 /* ─── Tags ──────────────────────────────────────────────── */
 .tags { display: flex; flex-wrap: wrap; gap: 0.3rem; }
 

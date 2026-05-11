@@ -55,7 +55,10 @@ async function ensureSchema() {
     ADD COLUMN IF NOT EXISTS resources TEXT,
     ADD COLUMN IF NOT EXISTS equipment TEXT,
     ADD COLUMN IF NOT EXISTS instructions TEXT,
-    ADD COLUMN IF NOT EXISTS activity_category VARCHAR(20) DEFAULT 'Practice'
+    ADD COLUMN IF NOT EXISTS activity_category VARCHAR(20) DEFAULT 'Practice',
+    ADD COLUMN IF NOT EXISTS class_management_notes TEXT,
+    ADD COLUMN IF NOT EXISTS class_preparation TEXT,
+    ADD COLUMN IF NOT EXISTS assessment_focus TEXT
   `);
 
   await pool.query(`
@@ -208,6 +211,35 @@ async function userCanUploadActivity(user) {
   return hasRolePermission(user.dbUserId, 'add_recipes');
 }
 
+async function userCanViewTeacherCard(user) {
+  if (!user || !user.dbUserId) return false;
+  if (user.isAdmin) return true;
+
+  const result = await pool.query(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM user_roles ur
+       WHERE ur.user_id = $1
+         AND (
+           LOWER(COALESCE(ur.role, '')) LIKE '%teacher%'
+           OR LOWER(COALESCE(ur.user_type, '')) = 'teacher'
+         )
+     ) AS allowed`,
+    [user.dbUserId]
+  );
+
+  return !!result.rows[0]?.allowed;
+}
+
+function stripTeacherOnlyFields(activity) {
+  return {
+    ...activity,
+    class_management_notes: null,
+    class_preparation: null,
+    assessment_focus: null,
+  };
+}
+
 async function requireUploadPermission(req, res, next) {
   try {
     if (!(req.isAuthenticated && req.isAuthenticated() && req.user)) {
@@ -273,8 +305,10 @@ app.get('/api/me', async (req, res) => {
   }
 
   let canUploadActivity = false;
+  let canViewTeacherCard = false;
   try {
     canUploadActivity = await userCanUploadActivity(req.user);
+    canViewTeacherCard = await userCanViewTeacherCard(req.user);
   } catch (err) {
     console.error('GET /api/me permission check error:', err.message);
   }
@@ -287,6 +321,7 @@ app.get('/api/me', async (req, res) => {
       initials: req.user.initials,
       isAdmin: !!req.user.isAdmin,
       canUploadActivity: !!canUploadActivity,
+      canViewTeacherCard: !!canViewTeacherCard,
     },
   });
 });
@@ -525,7 +560,16 @@ app.get('/api/activities', async (req, res) => {
     const sql = `SELECT * FROM activities ${where} ORDER BY ${orderBy}`;
     const result = await pool.query(sql, params);
 
-    res.json(result.rows);
+    let canViewTeacherCard = false;
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      canViewTeacherCard = await userCanViewTeacherCard(req.user);
+    }
+
+    const rows = canViewTeacherCard
+      ? result.rows
+      : result.rows.map(stripTeacherOnlyFields);
+
+    res.json(rows.map((r) => ({ ...r, canViewTeacherCard })));
   } catch (err) {
     console.error('GET /api/activities error:', err.message);
     res.status(500).json({ error: 'Database error' });
@@ -544,8 +588,17 @@ app.get('/api/activities/:id', async (req, res) => {
       return res.status(404).json({ error: 'Activity not found' });
     }
 
-    const activity = result.rows[0];
+    let activity = result.rows[0];
     const canViewInstructions = !!(req.isAuthenticated && req.isAuthenticated());
+    let canViewTeacherCard = false;
+
+    if (req.isAuthenticated && req.isAuthenticated() && req.user) {
+      canViewTeacherCard = await userCanViewTeacherCard(req.user);
+    }
+
+    if (!canViewTeacherCard) {
+      activity = stripTeacherOnlyFields(activity);
+    }
 
     if (!canViewInstructions) {
       activity.instructions = null;
@@ -554,6 +607,7 @@ app.get('/api/activities/:id', async (req, res) => {
     res.json({
       ...activity,
       canViewInstructions,
+      canViewTeacherCard,
     });
   } catch (err) {
     console.error('GET /api/activities/:id error:', err.message);
@@ -577,6 +631,9 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
       resources,
       equipment,
       instructions,
+      class_management_notes,
+      class_preparation,
+      assessment_focus,
     } = req.body;
 
     if (!name || !year_level || !type || !duration_hours || !difficulty) {
@@ -620,8 +677,11 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
          outcome_image_url,
          resources,
          equipment,
-         instructions
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         instructions,
+         class_management_notes,
+         class_preparation,
+         assessment_focus
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        RETURNING id`,
       [
         String(name).trim(),
@@ -637,6 +697,9 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
         resources ? String(resources).trim() : null,
         equipment ? String(equipment).trim() : null,
         instructions ? String(instructions).trim() : null,
+        class_management_notes ? String(class_management_notes).trim() : null,
+        class_preparation ? String(class_preparation).trim() : null,
+        assessment_focus ? String(assessment_focus).trim() : null,
       ]
     );
 

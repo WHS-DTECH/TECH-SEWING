@@ -63,6 +63,9 @@ if (form) {
       resources: document.getElementById('activity-resources')?.value?.trim() || null,
       equipment: document.getElementById('activity-equipment')?.value?.trim() || null,
       instructions: document.getElementById('activity-instructions')?.value?.trim() || null,
+      class_management_notes: document.getElementById('class-management-notes')?.value?.trim() || null,
+      class_preparation: document.getElementById('class-preparation')?.value?.trim() || null,
+      assessment_focus: document.getElementById('assessment-focus')?.value?.trim() || null,
     };
 
     try {

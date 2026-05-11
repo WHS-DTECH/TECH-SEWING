@@ -9,6 +9,7 @@ function buildCard(a) {
   const hrs = Number(a.duration_hours);
   const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
   const fallbackImage = defaultImage(a.name);
+  const teacherExtra = buildTeacherExtra(a);
 
   return `
     <a class="activity-card activity-card-link ${a.color}" href="activity_detail.html?id=${Number(a.id)}"
@@ -34,8 +35,35 @@ function buildCard(a) {
         </div>
         <h4>${escHtml(a.name)}</h4>
         <p>${escHtml(a.description || '')}</p>
+        ${teacherExtra}
       </div>
     </a>`;
+}
+
+function shortText(text, maxLen = 120) {
+  const raw = String(text || '').trim();
+  if (!raw) return '';
+  if (raw.length <= maxLen) return raw;
+  return `${raw.slice(0, maxLen - 1)}...`;
+}
+
+function buildTeacherExtra(a) {
+  if (!a.canViewTeacherCard) return '';
+
+  const classMgmt = shortText(a.class_management_notes, 110);
+  const prep = shortText(a.class_preparation, 110);
+  const assess = shortText(a.assessment_focus, 110);
+
+  if (!classMgmt && !prep && !assess) return '';
+
+  return `
+    <div class="teacher-extra">
+      <p class="teacher-extra-title">Teacher Card</p>
+      ${classMgmt ? `<p><strong>Class Mgmt:</strong> ${escHtml(classMgmt)}</p>` : ''}
+      ${prep ? `<p><strong>Preparation:</strong> ${escHtml(prep)}</p>` : ''}
+      ${assess ? `<p><strong>Assessment:</strong> ${escHtml(assess)}</p>` : ''}
+    </div>
+  `;
 }
 
 function defaultImage(name) {

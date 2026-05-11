@@ -39,6 +39,26 @@ function instructionsMarkup(activity) {
   `;
 }
 
+function teacherPanelMarkup(activity) {
+  if (!activity.canViewTeacherCard) return '';
+
+  const classMgmt = toLines(activity.class_management_notes);
+  const prep = toLines(activity.class_preparation);
+  const assess = toLines(activity.assessment_focus);
+
+  if (!classMgmt.length && !prep.length && !assess.length) return '';
+
+  return `
+    <article class="detail-card">
+      <h2>Teacher Card</h2>
+      <p class="small">Class management information (teacher view only).</p>
+      ${classMgmt.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Class Management</h3>${makeList(classMgmt, false)}` : ''}
+      ${prep.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Preparation</h3>${makeList(prep, false)}` : ''}
+      ${assess.length ? `<h3 style="font-size:0.86rem;color:#2e5378;margin:0.45rem 0 0.2rem;">Assessment Focus</h3>${makeList(assess, false)}` : ''}
+    </article>
+  `;
+}
+
 function defaultImage(name) {
   const label = encodeURIComponent(name || 'Sewing Activity');
   return `https://placehold.co/900x560/e8eef4/23496f?text=${label}`;
@@ -103,6 +123,8 @@ async function loadActivity() {
           <p class="small">Step-by-step method.</p>
           ${instructionsMarkup(a)}
         </article>
+
+        ${teacherPanelMarkup(a)}
       </section>
     `;
   } catch (_err) {
