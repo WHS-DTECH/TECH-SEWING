@@ -379,9 +379,8 @@ a { text-decoration: none; color: inherit; }
   border-bottom-color: #f5c842;
 }
 
-.teacher-toolbar.student-view-active .teacher-toolbar-label::after {
-  content: ' — Student Preview';
-  color: #b07a00;
+.teacher-toolbar.student-view-active .teacher-toolbar-label {
+  color: #8f6200;
 }
 
 .teacher-toggle-btn {

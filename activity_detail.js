@@ -110,8 +110,8 @@ async function loadActivity() {
           <p class="detail-sub">STUDENT SEWING ACTIVITY</p>
           <h1>${escHtml(a.name)}</h1>
           <div class="detail-meta">
-            <span class="detail-chip">${escHtml(a.year_level)}</span>
-            <span class="detail-chip">${escHtml(a.type)}</span>
+            <span class="detail-chip student-visible">${escHtml(a.year_level)}</span>
+            <span class="detail-chip student-visible">${escHtml(a.type)}</span>
             <span class="detail-chip teacher-only">${escHtml(durationLabel)}</span>
             <span class="detail-chip teacher-only">${escHtml(a.difficulty)}</span>
           </div>
@@ -148,15 +148,33 @@ async function loadActivity() {
 
     const toggleBtn = document.getElementById('student-view-toggle');
     const toolbar = document.getElementById('teacher-toolbar');
+    const toolbarLabel = toolbar ? toolbar.querySelector('.teacher-toolbar-label') : null;
+
+    function setPreviewMode(studentView) {
+      document.querySelectorAll('.teacher-only').forEach((el) => {
+        el.style.display = studentView ? 'none' : '';
+      });
+
+      if (toolbar) toolbar.classList.toggle('student-view-active', studentView);
+      if (toolbarLabel) {
+        toolbarLabel.textContent = studentView
+          ? 'Teacher View - Student Preview'
+          : 'Teacher View';
+      }
+
+      if (toggleBtn) {
+        toggleBtn.textContent = studentView ? 'Back to Teacher View' : 'Preview as Student';
+        toggleBtn.setAttribute('aria-pressed', String(studentView));
+      }
+    }
+
     if (toggleBtn) {
       let studentView = false;
+      setPreviewMode(studentView);
+
       toggleBtn.addEventListener('click', () => {
         studentView = !studentView;
-        document.querySelectorAll('.teacher-only').forEach(el => {
-          el.style.display = studentView ? 'none' : '';
-        });
-        if (toolbar) toolbar.classList.toggle('student-view-active', studentView);
-        toggleBtn.textContent = studentView ? 'Back to Teacher View' : 'Preview as Student';
+        setPreviewMode(studentView);
       });
     }
   } catch (_err) {
