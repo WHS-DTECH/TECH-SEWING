@@ -817,11 +817,18 @@ app.get('/admin_user_roles.html', requireAuth, requireAdmin, (req, res) => {
 app.get('/admin_role_permissions.html', requireAuth, requireAdmin, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin_role_permissions.html'));
 });
+
 app.get('/admin_upload_activity.html', requireAuth, requireUploadPermission, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin_upload_activity.html'));
 });
+
 app.get('/admin_upload_url_idea.html', requireAuth, requireUploadPermission, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin_upload_url_idea.html'));
+});
+
+// Explicitly protect Assessment Task upload page
+app.get('/admin_upload_assessment_task.html', requireAuth, requireUploadPermission, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin_upload_assessment_task.html'));
 });
 
 // ── Admin API: user roles ─────────────────────────────────
