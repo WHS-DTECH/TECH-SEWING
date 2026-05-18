@@ -517,7 +517,10 @@ function addHubScopeCondition(params, conditions) {
     OR (
       hub_site = 'UNSCOPED'
       AND (
-        (${hubParam} = 'TECH-SEWING' AND year_level ~* '^Year\\s*[0-9]+')
+        (${hubParam} = 'TECH-SEWING'
+          AND year_level ~* '^Year\\s*[0-9]+'
+          AND LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) !~ '(app|chromebook|controller|pipeline|network|cyber|software|coding|programming|database|robot|iot)'
+        )
         OR (${hubParam} = 'DTECH-HUB' AND LOWER(BTRIM(COALESCE(year_level, ''))) IN ('junior', 'senior'))
       )
     )
@@ -969,7 +972,10 @@ app.get('/api/activities/:id', async (req, res) => {
            OR (
              hub_site = 'UNSCOPED'
              AND (
-               ($2 = 'TECH-SEWING' AND year_level ~* '^Year\\s*[0-9]+')
+               ($2 = 'TECH-SEWING'
+                 AND year_level ~* '^Year\\s*[0-9]+'
+                 AND LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) !~ '(app|chromebook|controller|pipeline|network|cyber|software|coding|programming|database|robot|iot)'
+               )
                OR ($2 = 'DTECH-HUB' AND LOWER(BTRIM(COALESCE(year_level, ''))) IN ('junior', 'senior'))
              )
            )
