@@ -511,7 +511,17 @@ function addActivityVisibilityGuards(conditions) {
 
 function addHubScopeCondition(params, conditions) {
   params.push(HUB_SITE_KEY);
-  conditions.push(`hub_site = $${params.length}`);
+  const hubParam = `$${params.length}`;
+  conditions.push(`(
+    hub_site = ${hubParam}
+    OR (
+      hub_site = 'UNSCOPED'
+      AND (
+        (${hubParam} = 'TECH-SEWING' AND year_level ~* '^Year\\s*[0-9]+')
+        OR (${hubParam} = 'DTECH-HUB' AND LOWER(BTRIM(COALESCE(year_level, ''))) IN ('junior', 'senior'))
+      )
+    )
+  )`);
 }
 
 async function requireUploadPermission(req, res, next) {
@@ -954,7 +964,16 @@ app.get('/api/activities/:id', async (req, res) => {
       `SELECT *
        FROM activities
        WHERE id = $1
-         AND hub_site = $2
+         AND (
+           hub_site = $2
+           OR (
+             hub_site = 'UNSCOPED'
+             AND (
+               ($2 = 'TECH-SEWING' AND year_level ~* '^Year\\s*[0-9]+')
+               OR ($2 = 'DTECH-HUB' AND LOWER(BTRIM(COALESCE(year_level, ''))) IN ('junior', 'senior'))
+             )
+           )
+         )
          AND COALESCE(BTRIM(name), '') <> ''
          AND COALESCE(BTRIM(year_level), '') <> ''
          AND COALESCE(BTRIM(type), '') <> ''
