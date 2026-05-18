@@ -527,6 +527,14 @@ function addActivityVisibilityGuards(conditions) {
   conditions.push(`COALESCE(BTRIM(difficulty), '') <> ''`);
 }
 
+function addSiteNoiseFilter(conditions) {
+  if (HUB_SITE_KEY !== 'TECH-SEWING') return;
+  conditions.push(`
+    LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) !~
+    '(app|chromebook|controller|pipeline|office suite|infrastructure|network|software|coding|programming|database|cyber|digital media|guidance counsellor|register)'
+  `);
+}
+
 function addHubScopeCondition(params, conditions) {
   params.push(HUB_SITE_KEY);
   const hubParam = `$${params.length}`;
@@ -915,6 +923,7 @@ app.get('/api/activities', async (req, res) => {
 
     addHubScopeCondition(params, conditions);
     addActivityVisibilityGuards(conditions);
+    addSiteNoiseFilter(conditions);
 
     if (week === 'true') {
       conditions.push('is_this_week = TRUE');
@@ -1002,6 +1011,11 @@ app.get('/api/activities/:id', async (req, res) => {
          AND COALESCE(BTRIM(year_level), '') <> ''
          AND COALESCE(BTRIM(type), '') <> ''
          AND COALESCE(BTRIM(difficulty), '') <> ''
+         AND (
+           $2 <> 'TECH-SEWING'
+           OR LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) !~
+              '(app|chromebook|controller|pipeline|office suite|infrastructure|network|software|coding|programming|database|cyber|digital media|guidance counsellor|register)'
+         )
        LIMIT 1`,
       [id, HUB_SITE_KEY]
     );
