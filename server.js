@@ -236,44 +236,26 @@ const sessionStore = new PgSession({
   pruneSessionInterval: 60 * 15,
 });
 
-const sessionMiddleware = session({
-  store: sessionStore,
-  name: 'sewing.sid',
-  secret: process.env.SESSION_SECRET || 'dev-only-secret-change-me',
-  resave: false,
-  saveUninitialized: false,
-  rolling: true,
-  cookie: {
-    httpOnly: true,
-    sameSite: 'lax',
-    secure: process.env.NODE_ENV === 'production',
-    maxAge: 1000 * 60 * 60 * 24 * 30,
-  },
-});
-
-const passportSessionMiddleware = passport.session();
-
 app.set('trust proxy', 1);
-app.use((req, res, next) => {
-  sessionMiddleware(req, res, (err) => {
-    if (err) {
-      console.error('[session] middleware error:', err.message);
-      return next();
-    }
-    next();
-  });
-});
+app.use(
+  session({
+    store: sessionStore,
+    name: 'sewing.sid',
+    secret: process.env.SESSION_SECRET || 'dev-only-secret-change-me',
+    resave: false,
+    saveUninitialized: false,
+    rolling: true,
+    cookie: {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: 1000 * 60 * 60 * 24 * 30,
+    },
+  })
+);
 
 app.use(passport.initialize());
-app.use((req, res, next) => {
-  passportSessionMiddleware(req, res, (err) => {
-    if (err) {
-      console.error('[session] passport error:', err.message);
-      return next();
-    }
-    next();
-  });
-});
+app.use(passport.session());
 
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
@@ -487,28 +469,13 @@ app.get(
     if (!passport._strategy('google')) {
       return res.status(500).send('Google auth is not configured yet.');
     }
-    return passport.authenticate('google', (err, user, info) => {
-      if (err) {
-        console.error('[google-auth] callback error:', err.message);
-        return res.redirect('/index.html?auth=failed');
-      }
-
-      if (!user) {
-        console.error('[google-auth] callback rejected:', info && info.message ? info.message : 'no user returned');
-        return res.redirect('/index.html?auth=failed');
-      }
-
-      return req.logIn(user, (loginErr) => {
-        if (loginErr) {
-          console.error('[google-auth] login error:', loginErr.message);
-          return res.redirect('/index.html?auth=failed');
-        }
-
-        return res.redirect('/index.html');
-      });
+    return passport.authenticate('google', {
+      failureRedirect: '/index.html?auth=failed',
     })(req, res, next);
   },
-  (_req, res) => res.redirect('/index.html')
+  (_req, res) => {
+    res.redirect('/index.html');
+  }
 );
 
 app.get('/auth/logout', (req, res, next) => {
