@@ -144,7 +144,6 @@ async function loadActivity() {
     if (!res.ok) throw new Error('Activity not found');
     const a = await res.json();
 
-    const resourcesEquipment = combineUniqueLines(toLines(a.resources), toLines(a.equipment));
     const hrs = Number(a.duration_hours);
     const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
     const fallbackImage = defaultImage(a.name);
