@@ -1148,7 +1148,7 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
                assessment_focus = $18,
              hub_site = $19
        WHERE id = $1
-           AND hub_site = $19
+             AND hub_site = $19
        RETURNING id`,
       [
         id,

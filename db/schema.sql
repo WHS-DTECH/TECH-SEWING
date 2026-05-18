@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS activities (
   class_management_notes TEXT,
   class_preparation TEXT,
   assessment_focus TEXT,
-  hub            VARCHAR(30)   NOT NULL DEFAULT 'SEWING',
+  hub_site       VARCHAR(100)  NOT NULL DEFAULT 'UNSCOPED',
   color          VARCHAR(30)   NOT NULL DEFAULT 'color-rose',
   is_this_week   BOOLEAN       NOT NULL DEFAULT FALSE,
   created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
