@@ -4,6 +4,7 @@ const pageTitle = document.getElementById('url-idea-page-title');
 const pageSubtitle = document.getElementById('url-idea-page-subtitle');
 const formHeading = document.getElementById('url-idea-form-heading');
 const submitBtn = document.getElementById('url-idea-submit-btn');
+const deleteBtn = document.getElementById('url-idea-delete-btn');
 const params = new URLSearchParams(window.location.search);
 const editId = Number(params.get('id'));
 const isEditMode = Number.isInteger(editId) && editId > 0;
@@ -46,7 +47,34 @@ if (isEditMode) {
   if (pageSubtitle) pageSubtitle.textContent = 'Update an existing URL idea and save your changes.';
   if (formHeading) formHeading.textContent = `Edit URL Idea #${editId}`;
   if (submitBtn) submitBtn.textContent = 'Update URL Idea';
+  if (deleteBtn) deleteBtn.style.display = 'inline-block';
   loadUrlIdeaForEdit();
+}
+
+if (deleteBtn) {
+  deleteBtn.addEventListener('click', async () => {
+    if (!isEditMode) return;
+
+    const confirmed = window.confirm('Delete this URL idea permanently? This cannot be undone.');
+    if (!confirmed) return;
+
+    setStatus('Deleting URL idea...', false);
+
+    try {
+      const res = await fetch(`/api/admin/activities/${editId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not delete URL idea');
+
+      setStatus('URL idea deleted. Returning to library...', false);
+      window.location.href = '/index.html';
+    } catch (err) {
+      setStatus(err.message || 'Could not delete URL idea', true);
+    }
+  });
 }
 
 if (form) {
