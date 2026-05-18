@@ -1136,6 +1136,29 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
     ]);
 
     const safeColor = allowedColors.has(String(color)) ? color : 'color-rose';
+    const safeYearLevel = String(year_level).trim();
+    const safeType = String(type).trim();
+
+    if (HUB_SITE_KEY === 'TECH-SEWING') {
+      const allowedYearLevels = new Set(['Year 9', 'Year 10', 'Year 11', 'Year 12']);
+      const allowedTypes = new Set([
+        'Hand Sewing',
+        'Machine Sewing',
+        'Embroidery',
+        'Pattern Making',
+        'Construction',
+        'Finishing',
+      ]);
+
+      if (!allowedYearLevels.has(safeYearLevel)) {
+        return res.status(400).json({ error: 'Invalid year level for Sewing Room (use Year 9-12).' });
+      }
+
+      if (!allowedTypes.has(safeType)) {
+        return res.status(400).json({ error: 'Invalid activity type for Sewing Room.' });
+      }
+    }
+
     const categoryRaw = String(activity_category || 'Practice').trim().toLowerCase();
     const categoryMap = {
       assessment: 'Assessment',
@@ -1177,8 +1200,8 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
        RETURNING id`,
       [
         String(name).trim(),
-        String(year_level).trim(),
-        String(type).trim(),
+        safeYearLevel,
+        safeType,
         safeCategory,
         hours,
         String(difficulty).trim(),
@@ -1200,7 +1223,7 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
     res.json({ success: true, id: result.rows[0].id });
   } catch (err) {
     console.error('POST /api/admin/activities error:', err.message);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Database error', detail: err.message });
   }
 });
 
@@ -1250,6 +1273,29 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
     ]);
 
     const safeColor = allowedColors.has(String(color)) ? color : 'color-rose';
+    const safeYearLevel = String(year_level).trim();
+    const safeType = String(type).trim();
+
+    if (HUB_SITE_KEY === 'TECH-SEWING') {
+      const allowedYearLevels = new Set(['Year 9', 'Year 10', 'Year 11', 'Year 12']);
+      const allowedTypes = new Set([
+        'Hand Sewing',
+        'Machine Sewing',
+        'Embroidery',
+        'Pattern Making',
+        'Construction',
+        'Finishing',
+      ]);
+
+      if (!allowedYearLevels.has(safeYearLevel)) {
+        return res.status(400).json({ error: 'Invalid year level for Sewing Room (use Year 9-12).' });
+      }
+
+      if (!allowedTypes.has(safeType)) {
+        return res.status(400).json({ error: 'Invalid activity type for Sewing Room.' });
+      }
+    }
+
     const categoryRaw = String(activity_category || 'Practice').trim().toLowerCase();
     const categoryMap = {
       assessment: 'Assessment',
@@ -1293,8 +1339,8 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
       [
         id,
         String(name).trim(),
-        String(year_level).trim(),
-        String(type).trim(),
+        safeYearLevel,
+        safeType,
         safeCategory,
         hours,
         String(difficulty).trim(),
@@ -1320,7 +1366,7 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
     res.json({ success: true, id: result.rows[0].id });
   } catch (err) {
     console.error('PUT /api/admin/activities/:id error:', err.message);
-    res.status(500).json({ error: 'Database error' });
+    res.status(500).json({ error: 'Database error', detail: err.message });
   }
 });
 
