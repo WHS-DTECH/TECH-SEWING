@@ -206,6 +206,24 @@ async function ensureSchema() {
   `);
 
   await pool.query(`
+    UPDATE activities
+    SET hub_site = 'DTECH-HUB'
+    WHERE hub_site = 'TECH-SEWING'
+      AND (
+        LOWER(COALESCE(type, '')) IN (
+          'office suite',
+          'infrastructure & networking',
+          'digital media',
+          'web development',
+          'software development',
+          'cybersecurity',
+          'database systems'
+        )
+        OR LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) ~ '(app|chromebook|controller|pipeline|network|cyber|software|coding|programming|database|robot|iot)'
+      )
+  `);
+
+  await pool.query(`
     ALTER TABLE activities
     ALTER COLUMN hub_site SET DEFAULT 'UNSCOPED'
   `);
