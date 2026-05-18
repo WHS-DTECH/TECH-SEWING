@@ -64,6 +64,15 @@ function setChecked(id, value) {
   el.checked = !!value;
 }
 
+function mergeResourceEquipment(resources, equipment) {
+  const left = String(resources || '').trim();
+  const right = String(equipment || '').trim();
+  if (!left && !right) return '';
+  if (!left) return right;
+  if (!right) return left;
+  return `${left}\n${right}`;
+}
+
 async function loadActivityForEdit() {
   if (!isEditMode) return;
 
@@ -82,8 +91,7 @@ async function loadActivityForEdit() {
     setValue('activity-image', data.outcome_image_url || '');
     setValue('activity-idea-url', data.idea_url || '');
     setValue('activity-description', data.description || '');
-    setValue('activity-resources', data.resources || '');
-    setValue('activity-equipment', data.equipment || '');
+    setValue('activity-resources', mergeResourceEquipment(data.resources, data.equipment));
     setValue('activity-instructions', data.instructions || '');
     setValue('class-management-notes', data.class_management_notes || '');
     setValue('class-preparation', data.class_preparation || '');
@@ -120,7 +128,7 @@ if (form) {
       outcome_image_url: document.getElementById('activity-image')?.value?.trim() || null,
       idea_url: document.getElementById('activity-idea-url')?.value?.trim() || null,
       resources: document.getElementById('activity-resources')?.value?.trim() || null,
-      equipment: document.getElementById('activity-equipment')?.value?.trim() || null,
+      equipment: document.getElementById('activity-resources')?.value?.trim() || null,
       instructions: document.getElementById('activity-instructions')?.value?.trim() || null,
       class_management_notes: document.getElementById('class-management-notes')?.value?.trim() || null,
       class_preparation: document.getElementById('class-preparation')?.value?.trim() || null,
