@@ -12,6 +12,11 @@ function buildCard(a) {
   const fallbackImage = defaultImage(a.name);
   const teacherExtra = buildTeacherExtra(a);
   const ideaUrl = normalizeHttpUrl(a.idea_url);
+  const uploadType = getUploadType(a);
+  const uploadTypeLabel = uploadType === 'url-idea' ? 'URL Idea' : 'Activity';
+  const footerClass = uploadType === 'url-idea'
+    ? 'card-footer-upload card-footer-upload-url-idea'
+    : 'card-footer-upload card-footer-upload-activity';
 
   return `
     <a class="activity-card activity-card-link ${a.color}" href="activity_detail.html?id=${Number(a.id)}"
@@ -41,8 +46,13 @@ function buildCard(a) {
         ${ideaUrl ? `<p><a href="${escHtml(ideaUrl)}" target="_blank" rel="noopener noreferrer">Open URL Idea</a></p>` : ''}
         ${teacherExtra}
       </div>
-      ${isUrlIdea ? '<div class="card-footer-url">URL Idea</div>' : ''}
+      <div class="${footerClass}">${uploadTypeLabel}</div>
     </a>`;
+}
+
+function getUploadType(a) {
+  const isUrlIdea = String(a?.activity_category || '').toLowerCase() === 'url idea';
+  return isUrlIdea ? 'url-idea' : 'activity';
 }
 
 function isRenderableActivity(a) {
@@ -128,6 +138,7 @@ const searchInput = document.getElementById('search-input');
 const filterYear  = document.getElementById('filter-year');
 const filterType  = document.getElementById('filter-type');
 const filterCategory = document.getElementById('filter-category');
+const filterUploadType = document.getElementById('filter-upload-type');
 const filterSort  = document.getElementById('filter-sort');
 const libGrid     = document.getElementById('library-grid');
 const countBadge  = document.querySelector('.library-count');
@@ -141,6 +152,7 @@ async function loadLibrary() {
     const year   = filterYear?.value;
     const type   = filterType?.value;
     const category = filterCategory?.value;
+    const uploadType = filterUploadType?.value;
     const sort   = filterSort?.value || 'az';
     if (year) params.set('year', year);
     if (type) params.set('type', type);
@@ -152,6 +164,10 @@ async function loadLibrary() {
     let data = await res.json();
 
     data = data.filter(isRenderableActivity);
+
+    if (uploadType) {
+      data = data.filter((a) => getUploadType(a) === uploadType);
+    }
 
     // Client-side text search (fast, no extra round-trip)
     const q = searchInput?.value.trim().toLowerCase();
@@ -179,6 +195,7 @@ searchInput?.addEventListener('input',  loadLibrary);
 filterYear?.addEventListener('change',  loadLibrary);
 filterType?.addEventListener('change',  loadLibrary);
 filterCategory?.addEventListener('change', loadLibrary);
+filterUploadType?.addEventListener('change', loadLibrary);
 filterSort?.addEventListener('change',  loadLibrary);
 
 // ── Init ──────────────────────────────────────────────────

@@ -373,14 +373,22 @@ a { text-decoration: none; color: inherit; }
 .card-body h4 { font-size: 0.9rem; font-weight: 700; color: #1e1e2e; }
 .card-body p  { font-size: 0.78rem; color: #5a5a72; line-height: 1.5; }
 
-.card-footer-url {
-  border-top: 1px solid #e6d7f1;
+.card-footer-upload {
   padding: 0.55rem 0.9rem 0.7rem;
   font-size: 0.72rem;
   font-weight: 800;
-  color: #6b2d8b;
   text-transform: uppercase;
   letter-spacing: 0.06em;
+}
+
+.card-footer-upload-activity {
+  border-top: 1px solid #dbe6f4;
+  color: #2f5175;
+}
+
+.card-footer-upload-url-idea {
+  border-top: 1px solid #e6d7f1;
+  color: #6b2d8b;
 }
 
 .teacher-extra {
