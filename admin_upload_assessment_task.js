@@ -74,9 +74,33 @@ if (form) {
     const progressLogging = value('assessment-progress');
     const feedback = value('assessment-feedback');
     const durationHours = Number(value('assessment-duration'));
+    const allowedYears = new Set(['Year 9', 'Year 10', 'Year 11', 'Year 12']);
+    const allowedTypes = new Set([
+      'Hand Sewing',
+      'Machine Sewing',
+      'Embroidery',
+      'Pattern Making',
+      'Construction',
+      'Finishing',
+    ]);
 
     if (!name || !yearLevel || !type || !difficulty || !Number.isFinite(durationHours) || durationHours <= 0) {
       setStatus('Please complete the required fields before saving.', true);
+      return;
+    }
+
+    if (!allowedYears.has(yearLevel)) {
+      setStatus('Please choose a valid year level (Year 9 to Year 12).', true);
+      return;
+    }
+
+    if (!allowedTypes.has(type)) {
+      setStatus('Please choose a valid Sewing Room type.', true);
+      return;
+    }
+
+    if (durationHours > 24) {
+      setStatus('Duration must be 24 hours or less.', true);
       return;
     }
 
