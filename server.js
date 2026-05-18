@@ -178,6 +178,45 @@ async function ensureSchema() {
     ADD CONSTRAINT activities_activity_category_check
     CHECK (activity_category IN ('Practice','Assessment','Skill','URL Idea'))
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id SERIAL PRIMARY KEY,
+      google_id TEXT UNIQUE,
+      email VARCHAR(255) NOT NULL UNIQUE,
+      name VARCHAR(255) NOT NULL,
+      picture TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_roles (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role VARCHAR(100) NOT NULL,
+      user_type VARCHAR(100),
+      assigned_by VARCHAR(255),
+      assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS role_permissions (
+      id SERIAL PRIMARY KEY,
+      role_name VARCHAR(100) NOT NULL UNIQUE,
+      recipes BOOLEAN NOT NULL DEFAULT FALSE,
+      add_recipes BOOLEAN NOT NULL DEFAULT FALSE,
+      inventory BOOLEAN NOT NULL DEFAULT FALSE,
+      planning BOOLEAN NOT NULL DEFAULT FALSE,
+      admin BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
 }
 
 // ── Middleware ───────────────────────────────────────────
