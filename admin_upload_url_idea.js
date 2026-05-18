@@ -48,7 +48,39 @@ if (isEditMode) {
   if (formHeading) formHeading.textContent = `Edit URL Idea #${editId}`;
   if (submitBtn) submitBtn.textContent = 'Update URL Idea';
   if (deleteBtn) deleteBtn.style.display = 'inline-block';
+  const convertBtn = document.getElementById('convert-to-activity-btn');
+  if (convertBtn) convertBtn.style.display = 'inline-block';
   loadUrlIdeaForEdit();
+}
+// Convert to Activity logic
+const convertBtn = document.getElementById('convert-to-activity-btn');
+if (convertBtn && isEditMode) {
+  convertBtn.addEventListener('click', async () => {
+    if (!loadedUrlIdea) return setStatus('URL Idea not loaded', true);
+    setStatus('Converting to Activity...', false);
+    try {
+      const updatePayload = {
+        ...loadedUrlIdea,
+        activity_category: 'Practice',
+        // Ensure required fields for Activity
+        year_level: loadedUrlIdea.year_level || 'Year 9',
+        duration_hours: loadedUrlIdea.duration_hours || 1,
+        difficulty: loadedUrlIdea.difficulty || 'Beginner',
+      };
+      const res = await fetch(`/api/admin/activities/${editId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updatePayload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not convert to Activity');
+      setStatus('Converted! Redirecting...', false);
+      window.location.href = `/admin_upload_activity.html?id=${editId}`;
+    } catch (err) {
+      setStatus(err.message || 'Could not convert to Activity', true);
+    }
+  });
 }
 
 if (deleteBtn) {
