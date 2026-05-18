@@ -190,26 +190,44 @@ const sessionStore = new PgSession({
   pruneSessionInterval: 60 * 15,
 });
 
+const sessionMiddleware = session({
+  store: sessionStore,
+  name: 'sewing.sid',
+  secret: process.env.SESSION_SECRET || 'dev-only-secret-change-me',
+  resave: false,
+  saveUninitialized: false,
+  rolling: true,
+  cookie: {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 1000 * 60 * 60 * 24 * 30,
+  },
+});
+
+const passportSessionMiddleware = passport.session();
+
 app.set('trust proxy', 1);
-app.use(
-  session({
-    store: sessionStore,
-    name: 'sewing.sid',
-    secret: process.env.SESSION_SECRET || 'dev-only-secret-change-me',
-    resave: false,
-    saveUninitialized: false,
-    rolling: true,
-    cookie: {
-      httpOnly: true,
-      sameSite: 'lax',
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 24 * 30,
-    },
-  })
-);
+app.use((req, res, next) => {
+  sessionMiddleware(req, res, (err) => {
+    if (err) {
+      console.error('[session] middleware error:', err.message);
+      return next();
+    }
+    next();
+  });
+});
 
 app.use(passport.initialize());
-app.use(passport.session());
+app.use((req, res, next) => {
+  passportSessionMiddleware(req, res, (err) => {
+    if (err) {
+      console.error('[session] passport error:', err.message);
+      return next();
+    }
+    next();
+  });
+});
 
 passport.serializeUser((user, done) => done(null, user));
 passport.deserializeUser((user, done) => done(null, user));
