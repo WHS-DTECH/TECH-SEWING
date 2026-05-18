@@ -508,8 +508,13 @@ async function hasRolePermission(userId, permissionColumn) {
     `SELECT EXISTS (
        SELECT 1
        FROM user_roles ur
-       JOIN role_permissions rp ON LOWER(rp.role_name) = LOWER(ur.role)
-       WHERE ur.user_id = $1 AND COALESCE(rp.${permissionColumn}, FALSE) = TRUE
+       JOIN role_permissions rp
+         ON (
+           LOWER(BTRIM(rp.role_name)) = LOWER(BTRIM(COALESCE(ur.role, '')))
+           OR LOWER(BTRIM(rp.role_name)) = LOWER(BTRIM(COALESCE(ur.user_type, '')))
+         )
+       WHERE ur.user_id = $1
+         AND COALESCE(rp.${permissionColumn}, FALSE) = TRUE
      ) AS allowed`,
     [userId]
   );
