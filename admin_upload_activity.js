@@ -80,6 +80,7 @@ async function loadActivityForEdit() {
     setValue('activity-difficulty', data.difficulty);
     setValue('activity-color', data.color || 'color-rose');
     setValue('activity-image', data.outcome_image_url || '');
+    setValue('activity-idea-url', data.idea_url || '');
     setValue('activity-description', data.description || '');
     setValue('activity-resources', data.resources || '');
     setValue('activity-equipment', data.equipment || '');
@@ -117,6 +118,7 @@ if (form) {
       color: document.getElementById('activity-color')?.value,
       is_this_week: !!document.getElementById('activity-week')?.checked,
       outcome_image_url: document.getElementById('activity-image')?.value?.trim() || null,
+      idea_url: document.getElementById('activity-idea-url')?.value?.trim() || null,
       resources: document.getElementById('activity-resources')?.value?.trim() || null,
       equipment: document.getElementById('activity-equipment')?.value?.trim() || null,
       instructions: document.getElementById('activity-instructions')?.value?.trim() || null,

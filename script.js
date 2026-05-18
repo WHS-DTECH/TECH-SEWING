@@ -10,6 +10,7 @@ function buildCard(a) {
   const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
   const fallbackImage = defaultImage(a.name);
   const teacherExtra = buildTeacherExtra(a);
+  const ideaUrl = normalizeHttpUrl(a.idea_url);
 
   return `
     <a class="activity-card activity-card-link ${a.color}" href="activity_detail.html?id=${Number(a.id)}"
@@ -36,9 +37,17 @@ function buildCard(a) {
         </div>
         <h4>${escHtml(a.name)}</h4>
         <p>${escHtml(a.description || '')}</p>
+        ${ideaUrl ? `<p><a href="${escHtml(ideaUrl)}" target="_blank" rel="noopener noreferrer">Open URL Idea</a></p>` : ''}
         ${teacherExtra}
       </div>
     </a>`;
+}
+
+function normalizeHttpUrl(url) {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  if (!/^https?:\/\//i.test(value)) return '';
+  return value;
 }
 
 function shortText(text, maxLen = 120) {

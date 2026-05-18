@@ -136,6 +136,7 @@ async function ensureSchema() {
     ADD COLUMN IF NOT EXISTS resources TEXT,
     ADD COLUMN IF NOT EXISTS equipment TEXT,
     ADD COLUMN IF NOT EXISTS instructions TEXT,
+    ADD COLUMN IF NOT EXISTS idea_url TEXT,
     ADD COLUMN IF NOT EXISTS activity_category VARCHAR(20) DEFAULT 'Practice',
     ADD COLUMN IF NOT EXISTS class_management_notes TEXT,
     ADD COLUMN IF NOT EXISTS class_preparation TEXT,
@@ -150,12 +151,13 @@ async function ensureSchema() {
       WHEN LOWER(BTRIM(activity_category)) = 'practice' THEN 'Practice'
       WHEN LOWER(BTRIM(activity_category)) = 'assessment' THEN 'Assessment'
       WHEN LOWER(BTRIM(activity_category)) = 'skill' THEN 'Skill'
+      WHEN LOWER(BTRIM(activity_category)) IN ('url idea', 'url_idea', 'url-idea', 'urlidea') THEN 'URL Idea'
       ELSE 'Practice'
     END
     WHERE activity_category IS NULL
        OR BTRIM(activity_category) = ''
-       OR LOWER(BTRIM(activity_category)) NOT IN ('practice', 'assessment', 'skill')
-       OR activity_category NOT IN ('Practice', 'Assessment', 'Skill')
+       OR LOWER(BTRIM(activity_category)) NOT IN ('practice', 'assessment', 'skill', 'url idea', 'url_idea', 'url-idea', 'urlidea')
+       OR activity_category NOT IN ('Practice', 'Assessment', 'Skill', 'URL Idea')
   `);
 
   await pool.query(`
@@ -165,7 +167,7 @@ async function ensureSchema() {
   await pool.query(`
     ALTER TABLE activities
     ADD CONSTRAINT activities_activity_category_check
-    CHECK (activity_category IN ('Practice','Assessment','Skill'))
+    CHECK (activity_category IN ('Practice','Assessment','Skill','URL Idea'))
   `);
 }
 
@@ -461,6 +463,9 @@ app.get('/admin_role_permissions.html', requireAuth, requireAdmin, (req, res) =>
 app.get('/admin_upload_activity.html', requireAuth, requireUploadPermission, (req, res) => {
   res.sendFile(path.join(__dirname, 'admin_upload_activity.html'));
 });
+app.get('/admin_upload_url_idea.html', requireAuth, requireUploadPermission, (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin_upload_url_idea.html'));
+});
 
 // ── Admin API: user roles ─────────────────────────────────
 app.get('/api/admin/user-roles', requireAuth, requireAdmin, async (_req, res) => {
@@ -727,7 +732,7 @@ app.get('/favicon.ico', (_req, res) => {
 app.use(express.static(path.join(__dirname)));
 
 // ── GET /api/activities ──────────────────────────────────
-// Query params: ?week=true  ?year=Year+9  ?type=Embroidery  ?category=assessment|practice|skill  ?sort=az|za|level|duration
+// Query params: ?week=true  ?year=Year+9  ?type=Embroidery  ?category=assessment|practice|skill|url-idea  ?sort=az|za|level|duration
 app.get('/api/activities', async (req, res) => {
   try {
     const { week, year, type, category, sort } = req.query;
@@ -746,9 +751,22 @@ app.get('/api/activities', async (req, res) => {
       params.push(type);
       conditions.push(`type = $${params.length}`);
     }
-    if (category && ['assessment', 'practice', 'skill'].includes(String(category).toLowerCase())) {
-      params.push(String(category).toLowerCase());
-      conditions.push(`LOWER(activity_category) = $${params.length}`);
+    if (category) {
+      const rawCategory = String(category).toLowerCase();
+      const categoryMap = {
+        assessment: 'Assessment',
+        practice: 'Practice',
+        skill: 'Skill',
+        'url-idea': 'URL Idea',
+        url_idea: 'URL Idea',
+        'url idea': 'URL Idea',
+        urlidea: 'URL Idea',
+      };
+      const safeCategory = categoryMap[rawCategory];
+      if (safeCategory) {
+        params.push(safeCategory);
+        conditions.push(`activity_category = $${params.length}`);
+      }
     }
 
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
@@ -832,6 +850,7 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
       color,
       is_this_week,
       outcome_image_url,
+      idea_url,
       resources,
       equipment,
       instructions,
@@ -864,6 +883,10 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
       assessment: 'Assessment',
       practice: 'Practice',
       skill: 'Skill',
+      'url idea': 'URL Idea',
+      url_idea: 'URL Idea',
+      'url-idea': 'URL Idea',
+      urlidea: 'URL Idea',
     };
     const safeCategory = categoryMap[categoryRaw] || 'Practice';
     const hours = Number(duration_hours);
@@ -884,13 +907,14 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
          color,
          is_this_week,
          outcome_image_url,
+         idea_url,
          resources,
          equipment,
          instructions,
          class_management_notes,
          class_preparation,
          assessment_focus
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
        RETURNING id`,
       [
         String(name).trim(),
@@ -903,6 +927,7 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
         safeColor,
         !!is_this_week,
         outcome_image_url ? String(outcome_image_url).trim() : null,
+        idea_url ? String(idea_url).trim() : null,
         resources ? String(resources).trim() : null,
         equipment ? String(equipment).trim() : null,
         instructions ? String(instructions).trim() : null,
@@ -937,6 +962,7 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
       color,
       is_this_week,
       outcome_image_url,
+      idea_url,
       resources,
       equipment,
       instructions,
@@ -969,6 +995,10 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
       assessment: 'Assessment',
       practice: 'Practice',
       skill: 'Skill',
+      'url idea': 'URL Idea',
+      url_idea: 'URL Idea',
+      'url-idea': 'URL Idea',
+      urlidea: 'URL Idea',
     };
     const safeCategory = categoryMap[categoryRaw] || 'Practice';
     const hours = Number(duration_hours);
@@ -989,12 +1019,13 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
            color = $9,
            is_this_week = $10,
            outcome_image_url = $11,
-           resources = $12,
-           equipment = $13,
-           instructions = $14,
-           class_management_notes = $15,
-           class_preparation = $16,
-           assessment_focus = $17
+             idea_url = $12,
+             resources = $13,
+             equipment = $14,
+             instructions = $15,
+             class_management_notes = $16,
+             class_preparation = $17,
+             assessment_focus = $18
        WHERE id = $1
        RETURNING id`,
       [
@@ -1009,6 +1040,7 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
         safeColor,
         !!is_this_week,
         outcome_image_url ? String(outcome_image_url).trim() : null,
+        idea_url ? String(idea_url).trim() : null,
         resources ? String(resources).trim() : null,
         equipment ? String(equipment).trim() : null,
         instructions ? String(instructions).trim() : null,
@@ -1025,6 +1057,65 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
     res.json({ success: true, id: result.rows[0].id });
   } catch (err) {
     console.error('PUT /api/admin/activities/:id error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+app.post('/api/admin/url-ideas', requireAuth, requireUploadPermission, async (req, res) => {
+  try {
+    const { name, type, color, description, idea_url } = req.body;
+
+    if (!name || !type || !idea_url) {
+      return res.status(400).json({ error: 'Missing required fields: name, type, idea_url' });
+    }
+
+    const safeUrl = String(idea_url).trim();
+    if (!/^https?:\/\//i.test(safeUrl)) {
+      return res.status(400).json({ error: 'URL must start with http:// or https://' });
+    }
+
+    const allowedColors = new Set([
+      'color-rose',
+      'color-teal',
+      'color-sage',
+      'color-lavender',
+      'color-coral',
+      'color-gold',
+    ]);
+
+    const safeColor = allowedColors.has(String(color)) ? color : 'color-teal';
+
+    const result = await pool.query(
+      `INSERT INTO activities (
+         name,
+         year_level,
+         type,
+         activity_category,
+         duration_hours,
+         difficulty,
+         description,
+         color,
+         is_this_week,
+         idea_url
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       RETURNING id`,
+      [
+        String(name).trim(),
+        'Year 9',
+        String(type).trim(),
+        'URL Idea',
+        1,
+        'Beginner',
+        description ? String(description).trim() : null,
+        safeColor,
+        false,
+        safeUrl,
+      ]
+    );
+
+    res.json({ success: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error('POST /api/admin/url-ideas error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
 });

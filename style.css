@@ -53,6 +53,65 @@ a { text-decoration: none; color: inherit; }
 
 .nav-links a:hover { background: rgba(255,255,255,0.12); color: #fff; }
 
+.nav-upload-wrap {
+  position: relative;
+}
+
+.nav-upload {
+  color: rgba(255,255,255,0.82);
+  font-size: 0.78rem;
+  padding: 0.35rem 0.65rem;
+  border-radius: 4px;
+  transition: background 0.15s;
+  white-space: nowrap;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-upload:hover,
+.nav-upload:focus-visible {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  outline: none;
+}
+
+.nav-upload-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 170px;
+  background: #3a1a4a;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 6px;
+  z-index: 220;
+  box-shadow: 0 4px 18px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+
+.nav-upload-wrap:hover .nav-upload-menu,
+.nav-upload-wrap:focus-within .nav-upload-menu {
+  display: block;
+}
+
+.nav-upload-menu a {
+  display: block;
+  padding: 0.55rem 0.85rem;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.78rem;
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+}
+
+.nav-upload-menu a:last-child {
+  border-bottom: none;
+}
+
+.nav-upload-menu a:hover {
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+}
+
 .nav-right {
   display: flex;
   align-items: center;

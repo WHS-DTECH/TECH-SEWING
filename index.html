@@ -14,7 +14,13 @@
     <a class="nav-brand" href="/index.html">SEWING ROOM</a>
     <ul class="nav-links">
       <li id="nav-browse-activities-item" style="display:none"><a href="/index.html">Browse Activities</a></li>
-      <li id="nav-upload-activity-item" style="display:none"><a href="/admin_upload_activity.html">Upload Activity</a></li>
+      <li id="nav-upload-menu-item" class="nav-upload-wrap" style="display:none">
+        <button class="nav-upload" type="button">Upload <span class="chevron">&#9660;</span></button>
+        <div class="nav-upload-menu">
+          <a href="/admin_upload_activity.html">Upload Activity</a>
+          <a href="/admin_upload_url_idea.html">Upload URL Idea</a>
+        </div>
+      </li>
       <li><a href="#">Project Kits</a></li>
       <li><a href="#">Safety Docs</a></li>
       <li><a href="#">Machine Booking</a></li>
@@ -103,6 +109,7 @@
             <option value="skill">Skill activities</option>
             <option value="practice">Practice activities</option>
             <option value="assessment">Assessment activities</option>
+            <option value="url-idea">URL ideas</option>
           </select>
         </div>
         <div class="filter-group">

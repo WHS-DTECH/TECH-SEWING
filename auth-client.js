@@ -3,6 +3,7 @@
   const avatar = document.getElementById('google-user-initials');
   const adminBadge = document.getElementById('google-admin-badge');
   const browseNavItem = document.getElementById('nav-browse-activities-item');
+  const uploadNavMenuItem = document.getElementById('nav-upload-menu-item');
   const uploadNavItem = document.getElementById('nav-upload-activity-item');
 
   if (!signoutLink || !avatar) return;
@@ -17,6 +18,7 @@
       signoutLink.setAttribute('href', '/auth/google');
       if (adminBadge) adminBadge.style.display = 'none';
       if (browseNavItem) browseNavItem.style.display = 'none';
+      if (uploadNavMenuItem) uploadNavMenuItem.style.display = 'none';
       if (uploadNavItem) uploadNavItem.style.display = 'none';
       return;
     }
@@ -33,6 +35,10 @@
       }
     }
 
+    if (uploadNavMenuItem) {
+      uploadNavMenuItem.style.display = data.user.canUploadActivity ? 'list-item' : 'none';
+    }
+
     if (uploadNavItem) {
       uploadNavItem.style.display = data.user.canUploadActivity ? 'list-item' : 'none';
     }
@@ -46,6 +52,7 @@
     signoutLink.setAttribute('href', '/auth/google');
     if (adminBadge) adminBadge.style.display = 'none';
     if (browseNavItem) browseNavItem.style.display = 'none';
+    if (uploadNavMenuItem) uploadNavMenuItem.style.display = 'none';
     if (uploadNavItem) uploadNavItem.style.display = 'none';
   }
 })();

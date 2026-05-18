@@ -8,12 +8,13 @@ CREATE TABLE IF NOT EXISTS activities (
   year_level     VARCHAR(20)   NOT NULL,
   type           VARCHAR(50)   NOT NULL,
   activity_category VARCHAR(20) NOT NULL DEFAULT 'Practice'
-                   CHECK (activity_category IN ('Practice','Assessment','Skill')),
+                   CHECK (activity_category IN ('Practice','Assessment','Skill','URL Idea')),
   duration_hours NUMERIC(4,1)  NOT NULL,
   difficulty     VARCHAR(20)   NOT NULL
                    CHECK (difficulty IN ('Beginner','Intermediate','Advanced')),
   description    TEXT,
   outcome_image_url TEXT,
+  idea_url       TEXT,
   resources      TEXT,
   equipment      TEXT,
   instructions   TEXT,

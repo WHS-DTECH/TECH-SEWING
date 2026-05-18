@@ -13,7 +13,13 @@
     <a class="nav-brand" href="/index.html">SEWING ROOM</a>
     <ul class="nav-links">
       <li id="nav-browse-activities-item" style="display:none"><a href="/index.html">Browse Activities</a></li>
-      <li id="nav-upload-activity-item" style="display:none"><a href="/admin_upload_activity.html">Upload Activity</a></li>
+      <li id="nav-upload-menu-item" class="nav-upload-wrap" style="display:none">
+        <button class="nav-upload" type="button">Upload <span class="chevron">&#9660;</span></button>
+        <div class="nav-upload-menu">
+          <a href="/admin_upload_activity.html">Upload Activity</a>
+          <a href="/admin_upload_url_idea.html">Upload URL Idea</a>
+        </div>
+      </li>
       <li><a href="#">Project Kits</a></li>
       <li><a href="#">Safety Docs</a></li>
       <li><a href="#">Machine Booking</a></li>
@@ -71,6 +77,7 @@
             <option value="Skill">Skill Activity</option>
             <option value="Practice">Practice Activity</option>
             <option value="Assessment">Assessment Activity</option>
+            <option value="URL Idea">URL Idea</option>
           </select>
         </div>
 
@@ -104,6 +111,11 @@
         <div class="field field-wide" style="grid-column:1 / -1;">
           <label for="activity-image">Outcome Image URL</label>
           <input id="activity-image" type="text" placeholder="https://... or /images/uploads/your-file.jpg" />
+        </div>
+
+        <div class="field field-wide" style="grid-column:1 / -1;">
+          <label for="activity-idea-url">Idea URL (shown on card)</label>
+          <input id="activity-idea-url" type="url" placeholder="https://example.com/idea" />
         </div>
 
         <div class="field field-wide" style="grid-column:1 / -1;">
