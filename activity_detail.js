@@ -137,12 +137,17 @@ async function loadActivity() {
     const fallbackImage = defaultImage(a.name);
     const ideaUrl = normalizeHttpUrl(a.idea_url);
     const isUrlIdea = String(a.activity_category || '').toLowerCase() === 'url idea';
+    const isAssessmentTask = String(a.activity_category || '').toLowerCase() === 'assessment';
+    const assessmentDetails = isAssessmentTask ? toLines(a.resources) : [];
+    const resourcesEquipment = isAssessmentTask
+      ? toLines(a.equipment)
+      : combineUniqueLines(toLines(a.resources), toLines(a.equipment));
 
     mount.innerHTML = `
       ${teacherToolbarMarkup(a)}
       <section class="detail-hero">
         <div class="detail-hero-content">
-          <p class="detail-sub">${isUrlIdea ? 'URL IDEA' : 'STUDENT SEWING ACTIVITY'}</p>
+          <p class="detail-sub">${isUrlIdea ? 'URL IDEA' : (isAssessmentTask ? 'ASSESSMENT TASK' : 'STUDENT SEWING ACTIVITY')}</p>
           <h1>${escHtml(a.name)}</h1>
           <div class="detail-meta">
             <span class="detail-chip">${escHtml(a.year_level)}</span>
@@ -160,6 +165,14 @@ async function loadActivity() {
       </section>
 
       <section class="detail-grid">
+        ${isAssessmentTask ? `
+        <article class="detail-card">
+          <h2>Assessment Details</h2>
+          <p class="small">Standard and assessment information.</p>
+          ${makeList(assessmentDetails, false)}
+        </article>
+        ` : ''}
+
         <article class="detail-card">
           <h2>Resources and Equipment</h2>
           <p class="small">Materials, tools, and machines used.</p>
