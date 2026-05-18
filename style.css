@@ -373,6 +373,12 @@ a { text-decoration: none; color: inherit; }
 .card-body h4 { font-size: 0.9rem; font-weight: 700; color: #1e1e2e; }
 .card-body p  { font-size: 0.78rem; color: #5a5a72; line-height: 1.5; }
 
+.card-url-note {
+  font-size: 0.74rem;
+  color: #2f5175;
+  font-weight: 600;
+}
+
 .card-footer-upload {
   padding: 0.55rem 0.9rem 0.7rem;
   font-size: 0.72rem;

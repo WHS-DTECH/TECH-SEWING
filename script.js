@@ -43,7 +43,7 @@ function buildCard(a) {
         </div>
         <h4>${escHtml(a.name)}</h4>
         <p>${escHtml(a.description || '')}</p>
-        ${ideaUrl ? `<p><a href="${escHtml(ideaUrl)}" target="_blank" rel="noopener noreferrer">Open URL Idea</a></p>` : ''}
+        ${ideaUrl ? '<p class="card-url-note">Open URL Idea on detail page</p>' : ''}
         ${teacherExtra}
       </div>
       <div class="${footerClass}">${uploadTypeLabel}</div>
