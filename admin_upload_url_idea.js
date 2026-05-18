@@ -1,3 +1,4 @@
+
 const form = document.getElementById('url-idea-form');
 const statusEl = document.getElementById('url-idea-status');
 const pageTitle = document.getElementById('url-idea-page-title');
@@ -5,9 +6,37 @@ const pageSubtitle = document.getElementById('url-idea-page-subtitle');
 const formHeading = document.getElementById('url-idea-form-heading');
 const submitBtn = document.getElementById('url-idea-submit-btn');
 const deleteBtn = document.getElementById('url-idea-delete-btn');
+const convertBtn = document.getElementById('convert-to-activity-btn');
 const params = new URLSearchParams(window.location.search);
 const editId = Number(params.get('id'));
 const isEditMode = Number.isInteger(editId) && editId > 0;
+
+let canUploadActivity = false;
+
+(async function checkUploadPermissionAndInit() {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    const data = await res.json();
+    canUploadActivity = !!(data.user && data.user.canUploadActivity);
+  } catch (e) {
+    canUploadActivity = false;
+  }
+
+  // Only show edit/delete/convert if user has upload permission
+  if (isEditMode && canUploadActivity) {
+    if (pageTitle) pageTitle.textContent = 'Edit URL Idea';
+    if (pageSubtitle) pageSubtitle.textContent = 'Update an existing URL idea and save your changes.';
+    if (formHeading) formHeading.textContent = `Edit URL Idea #${editId}`;
+    if (submitBtn) submitBtn.textContent = 'Update URL Idea';
+    if (deleteBtn) deleteBtn.style.display = 'inline-block';
+    if (convertBtn) convertBtn.style.display = 'inline-block';
+  } else {
+    if (deleteBtn) deleteBtn.style.display = 'none';
+    if (convertBtn) convertBtn.style.display = 'none';
+  }
+
+  if (isEditMode) loadUrlIdeaForEdit();
+})();
 
 let loadedUrlIdea = null;
 
@@ -42,16 +71,7 @@ async function loadUrlIdeaForEdit() {
   }
 }
 
-if (isEditMode) {
-  if (pageTitle) pageTitle.textContent = 'Edit URL Idea';
-  if (pageSubtitle) pageSubtitle.textContent = 'Update an existing URL idea and save your changes.';
-  if (formHeading) formHeading.textContent = `Edit URL Idea #${editId}`;
-  if (submitBtn) submitBtn.textContent = 'Update URL Idea';
-  if (deleteBtn) deleteBtn.style.display = 'inline-block';
-  const convertBtn = document.getElementById('convert-to-activity-btn');
-  if (convertBtn) convertBtn.style.display = 'inline-block';
-  loadUrlIdeaForEdit();
-}
+
 // Convert to Activity logic
 const convertBtn = document.getElementById('convert-to-activity-btn');
 if (convertBtn && isEditMode) {

@@ -1,3 +1,4 @@
+
 const form = document.getElementById('activity-upload-form');
 const statusEl = document.getElementById('upload-status');
 const imageFileInput = document.getElementById('activity-image-file');
@@ -11,6 +12,31 @@ const deleteBtn = document.getElementById('activity-delete-btn');
 const params = new URLSearchParams(window.location.search);
 const editId = Number(params.get('id'));
 const isEditMode = Number.isInteger(editId) && editId > 0;
+
+let canUploadActivity = false;
+
+(async function checkUploadPermissionAndInit() {
+  try {
+    const res = await fetch('/api/me', { credentials: 'include' });
+    const data = await res.json();
+    canUploadActivity = !!(data.user && data.user.canUploadActivity);
+  } catch (e) {
+    canUploadActivity = false;
+  }
+
+  // Only show edit/delete if user has upload permission
+  if (isEditMode && canUploadActivity) {
+    if (pageTitle) pageTitle.textContent = 'Edit Activity';
+    if (pageSubtitle) pageSubtitle.textContent = 'Update an existing activity and save your changes.';
+    if (formHeading) formHeading.textContent = `Edit Activity #${editId}`;
+    if (submitBtn) submitBtn.textContent = 'Update Activity';
+    if (deleteBtn) deleteBtn.style.display = 'inline-block';
+  } else {
+    if (deleteBtn) deleteBtn.style.display = 'none';
+  }
+
+  if (isEditMode) loadActivityForEdit();
+})();
 
 function setStatus(msg, isError) {
   if (!statusEl) return;
@@ -103,14 +129,7 @@ async function loadActivityForEdit() {
   }
 }
 
-if (isEditMode) {
-  if (pageTitle) pageTitle.textContent = 'Edit Activity';
-  if (pageSubtitle) pageSubtitle.textContent = 'Update an existing activity and save your changes.';
-  if (formHeading) formHeading.textContent = `Edit Activity #${editId}`;
-  if (submitBtn) submitBtn.textContent = 'Update Activity';
-  if (deleteBtn) deleteBtn.style.display = 'inline-block';
-  loadActivityForEdit();
-}
+
 
 if (deleteBtn) {
   deleteBtn.addEventListener('click', async () => {
