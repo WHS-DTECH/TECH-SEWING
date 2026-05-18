@@ -1,7 +1,11 @@
 const form = document.getElementById('assessment-task-form');
 const statusEl = document.getElementById('assessment-task-status');
+const standardsStatusEl = document.getElementById('assessment-standards-status');
+const standardSelectEl = document.getElementById('assessment-standard-select');
+const standardDetailsEl = document.getElementById('assessment-standard-details');
 const imageInputs = Array.from(document.querySelectorAll('.assessment-image-input'));
 const uploadedImageUrls = new Array(5).fill(null);
+let assessmentStandards = [];
 
 function setStatus(message, isError) {
   if (!statusEl) return;
@@ -16,6 +20,75 @@ function value(id) {
 function checked(id) {
   return !!document.getElementById(id)?.checked;
 }
+
+function setStandardsStatus(message, isError) {
+  if (!standardsStatusEl) return;
+  standardsStatusEl.textContent = message;
+  standardsStatusEl.style.color = isError ? '#b63a3a' : '#6282a3';
+}
+
+function escHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildStandardDetails(standard) {
+  if (!standard) return '';
+
+  return [
+    `Standard Number: ${String(standard.standard_number || '').trim()}`,
+    `Standard Name: ${String(standard.standard_name || '').trim()}`,
+    `Subject Set: ${String(standard.subject_set || '').trim()}`,
+    `Level: ${String(standard.level || '').trim()}`,
+    `Credits: ${String(standard.credits || '').trim()}`,
+    `Assessment Type: ${String(standard.assessment_type || '').trim()}`,
+    `NZQA Source: ${String(standard.nzqa_search_url || '').trim()}`,
+  ].join('\n');
+}
+
+function populateStandardSelect() {
+  if (!standardSelectEl) return;
+
+  const options = ['<option value="">Choose a standard from Assessment Management data</option>'];
+  assessmentStandards.forEach((row) => {
+    const number = String(row.standard_number || '').trim();
+    const name = String(row.standard_name || '').trim();
+    if (!number) return;
+    const label = `${number} - ${name}`;
+    options.push(`<option value="${escHtml(number)}">${escHtml(label)}</option>`);
+  });
+
+  standardSelectEl.innerHTML = options.join('');
+}
+
+async function loadAssessmentStandardsForForm() {
+  setStandardsStatus('Loading standards from Assessment Management...', false);
+
+  try {
+    const res = await fetch('/api/admin/assessment-standards', { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load standards');
+
+    assessmentStandards = Array.isArray(data.standards) ? data.standards : [];
+    populateStandardSelect();
+    setStandardsStatus(`Loaded ${assessmentStandards.length} standards. Select one to auto-fill Standard Details.`, false);
+  } catch (err) {
+    assessmentStandards = [];
+    populateStandardSelect();
+    setStandardsStatus(err.message || 'Could not load standards', true);
+  }
+}
+
+standardSelectEl?.addEventListener('change', () => {
+  const selectedNumber = String(standardSelectEl.value || '').trim();
+  if (!selectedNumber || !standardDetailsEl) return;
+  const selected = assessmentStandards.find((row) => String(row.standard_number || '').trim() === selectedNumber);
+  if (!selected) return;
+  standardDetailsEl.value = buildStandardDetails(selected);
+});
 
 async function uploadImageFile(file) {
   const formData = new FormData();
@@ -52,6 +125,8 @@ imageInputs.forEach((input) => {
     }
   });
 });
+
+loadAssessmentStandardsForForm();
 
 if (form) {
   form.addEventListener('submit', async (e) => {
