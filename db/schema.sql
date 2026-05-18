@@ -73,3 +73,13 @@ CREATE TABLE IF NOT EXISTS role_permissions (
   created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW(),
   updated_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
+
+-- Session store ───────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS user_sessions (
+  sid            VARCHAR       PRIMARY KEY,
+  sess           JSON          NOT NULL,
+  expire         TIMESTAMPTZ   NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_sessions_expire
+  ON user_sessions (expire);

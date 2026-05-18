@@ -224,6 +224,19 @@ async function ensureSchema() {
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )
   `);
+
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS user_sessions (
+      sid VARCHAR PRIMARY KEY,
+      sess JSON NOT NULL,
+      expire TIMESTAMPTZ NOT NULL
+    )
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_user_sessions_expire
+    ON user_sessions (expire)
+  `);
 }
 
 // ── Middleware ───────────────────────────────────────────
@@ -232,7 +245,7 @@ app.use(express.json());
 const sessionStore = new PgSession({
   pool,
   tableName: 'user_sessions',
-  createTableIfMissing: true,
+  createTableIfMissing: false,
   pruneSessionInterval: 60 * 15,
 });
 
