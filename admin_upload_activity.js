@@ -6,6 +6,7 @@ const pageTitle = document.getElementById('activity-page-title');
 const pageSubtitle = document.getElementById('activity-page-subtitle');
 const formHeading = document.getElementById('activity-form-heading');
 const submitBtn = document.getElementById('activity-submit-btn');
+const deleteBtn = document.getElementById('activity-delete-btn');
 
 const params = new URLSearchParams(window.location.search);
 const editId = Number(params.get('id'));
@@ -107,7 +108,34 @@ if (isEditMode) {
   if (pageSubtitle) pageSubtitle.textContent = 'Update an existing activity and save your changes.';
   if (formHeading) formHeading.textContent = `Edit Activity #${editId}`;
   if (submitBtn) submitBtn.textContent = 'Update Activity';
+  if (deleteBtn) deleteBtn.style.display = 'inline-block';
   loadActivityForEdit();
+}
+
+if (deleteBtn) {
+  deleteBtn.addEventListener('click', async () => {
+    if (!isEditMode) return;
+
+    const confirmed = window.confirm('Delete this activity permanently? This cannot be undone.');
+    if (!confirmed) return;
+
+    setStatus('Deleting activity...', false);
+
+    try {
+      const res = await fetch(`/api/admin/activities/${editId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Could not delete activity');
+
+      setStatus('Activity deleted. Returning to library...', false);
+      window.location.href = '/index.html';
+    } catch (err) {
+      setStatus(err.message || 'Could not delete activity', true);
+    }
+  });
 }
 
 if (form) {

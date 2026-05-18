@@ -16,6 +16,22 @@ function toLines(text) {
     .filter(Boolean);
 }
 
+function combineUniqueLines(...lists) {
+  const out = [];
+  const seen = new Set();
+
+  lists.forEach((items) => {
+    items.forEach((item) => {
+      const key = String(item || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return;
+      seen.add(key);
+      out.push(String(item).trim());
+    });
+  });
+
+  return out;
+}
+
 function makeList(items, ordered) {
   if (!items.length) {
     return '<p class="small">Not provided yet.</p>';
@@ -104,8 +120,7 @@ async function loadActivity() {
     if (!res.ok) throw new Error('Activity not found');
     const a = await res.json();
 
-    const resources = toLines(a.resources);
-    const equipment = toLines(a.equipment);
+    const resourcesEquipment = combineUniqueLines(toLines(a.resources), toLines(a.equipment));
     const hrs = Number(a.duration_hours);
     const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
     const fallbackImage = defaultImage(a.name);
@@ -135,15 +150,9 @@ async function loadActivity() {
 
       <section class="detail-grid">
         <article class="detail-card">
-          <h2>Resources</h2>
-          <p class="small">Materials students need for this activity.</p>
-          ${makeList(resources, false)}
-        </article>
-
-        <article class="detail-card">
-          <h2>Equipment</h2>
-          <p class="small">Tools and machines used.</p>
-          ${makeList(equipment, false)}
+          <h2>Resources and Equipment</h2>
+          <p class="small">Materials, tools, and machines used.</p>
+          ${makeList(resourcesEquipment, false)}
         </article>
 
         <article class="detail-card">

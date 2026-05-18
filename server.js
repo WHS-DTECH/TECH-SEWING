@@ -1370,6 +1370,51 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
   }
 });
 
+app.delete('/api/admin/activities/:id', requireAuth, requireUploadPermission, async (req, res) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({ error: 'Invalid activity id' });
+    }
+
+    const visibilityCheck = await pool.query(
+      `SELECT id
+       FROM activities
+       WHERE id = $1
+         AND (
+           hub_site = $2
+           OR (
+             hub_site = 'UNSCOPED'
+             AND (
+               ($2 = 'TECH-SEWING'
+                 AND year_level ~* '^Year\\s*[0-9]+'
+                 AND LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) !~ '(app|chromebook|controller|pipeline|network|cyber|software|coding|programming|database|robot|iot)'
+               )
+               OR ($2 = 'DTECH-HUB' AND LOWER(BTRIM(COALESCE(year_level, ''))) IN ('junior', 'senior'))
+             )
+           )
+         )
+         AND (
+           $2 <> 'TECH-SEWING'
+           OR LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) !~
+              '(app|chromebook|controller|pipeline|office suite|infrastructure|network|software|coding|programming|database|cyber|digital media|guidance counsellor|register)'
+         )
+       LIMIT 1`,
+      [id, HUB_SITE_KEY]
+    );
+
+    if (!visibilityCheck.rows.length) {
+      return res.status(404).json({ error: 'Activity not found' });
+    }
+
+    await pool.query('DELETE FROM activities WHERE id = $1', [id]);
+    res.json({ success: true, id });
+  } catch (err) {
+    console.error('DELETE /api/admin/activities/:id error:', err.message);
+    res.status(500).json({ error: 'Database error', detail: err.message });
+  }
+});
+
 app.post('/api/admin/url-ideas', requireAuth, requireUploadPermission, async (req, res) => {
   try {
     const { name, type, color, description, idea_url } = req.body;
