@@ -281,11 +281,26 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL) {
 
 function requireAuth(req, res, next) {
   if (req.isAuthenticated && req.isAuthenticated()) return next();
+  if (req.path && req.path.startsWith('/api/')) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
   return res.redirect('/auth/google');
 }
 
 function requireAdmin(req, res, next) {
-  if (req.isAuthenticated && req.isAuthenticated() && req.user && req.user.isAdmin) return next();
+  if (!(req.isAuthenticated && req.isAuthenticated())) {
+    if (req.path && req.path.startsWith('/api/')) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    return res.redirect('/auth/google');
+  }
+
+  if (req.user && req.user.isAdmin) return next();
+
+  if (req.path && req.path.startsWith('/api/')) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+
   return res.status(403).send('Access denied');
 }
 
