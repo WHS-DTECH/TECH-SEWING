@@ -41,6 +41,14 @@ const pool = new Pool({
 
 const uploadsDir = path.join(__dirname, 'images', 'uploads');
 
+// Serve public files before session-backed middleware so the homepage can load
+// even if the session store is unavailable.
+app.use(express.static(path.join(__dirname)));
+
+app.get('/favicon.ico', (_req, res) => {
+  res.status(204).end();
+});
+
 const objectStorageEnabled = !!(
   OBJECT_STORAGE_ENDPOINT &&
   OBJECT_STORAGE_BUCKET &&
@@ -732,14 +740,6 @@ app.get('/api/suggestions', requireAuth, requireAdmin, async (req, res) => {
     res.status(500).json({ error: 'Database error' });
   }
 });
-
-// Favicon requested by browsers at /favicon.ico
-app.get('/favicon.ico', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'images', 'favicon.ico'));
-});
-
-// Serve all static frontend files (html, css, js, etc.)
-app.use(express.static(path.join(__dirname)));
 
 // ── GET /api/activities ──────────────────────────────────
 // Query params: ?week=true  ?year=Year+9  ?type=Embroidery  ?category=assessment|practice|skill|url-idea  ?sort=az|za|level|duration
