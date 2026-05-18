@@ -10,6 +10,7 @@ const submitBtn = document.getElementById('assessment-submit-btn');
 const imageInputs = Array.from(document.querySelectorAll('.assessment-image-input'));
 const uploadedImageUrls = new Array(5).fill(null);
 let assessmentStandards = [];
+let currentOutcomeImageUrl = '';
 const params = new URLSearchParams(window.location.search);
 const editId = Number(params.get('id'));
 const isEditMode = Number.isInteger(editId) && editId > 0;
@@ -38,6 +39,26 @@ function setChecked(id, v) {
   const el = document.getElementById(id);
   if (!el) return;
   el.checked = !!v;
+}
+
+function normalizeHttpUrl(url) {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  if (!/^https?:\/\//i.test(value)) return '';
+  return value;
+}
+
+function parseSupportingImagesFromDescription(text) {
+  const raw = String(text || '');
+  if (!raw) return [];
+
+  const match = raw.match(/Supporting Images:\n([\s\S]*)/i);
+  if (!match || !match[1]) return [];
+
+  return match[1]
+    .split(/\r?\n/)
+    .map((line) => normalizeHttpUrl(line))
+    .filter(Boolean);
 }
 
 function extractSection(text, heading) {
@@ -137,6 +158,17 @@ async function loadAssessmentForEdit() {
 
     const descriptionText = String(data.description || '');
     const subjectMatch = descriptionText.match(/Subject Stream:\s*(.+)/i);
+    const existingSupportingImages = parseSupportingImagesFromDescription(descriptionText);
+    currentOutcomeImageUrl = normalizeHttpUrl(data.outcome_image_url);
+
+    uploadedImageUrls.fill(null);
+    if (currentOutcomeImageUrl) {
+      uploadedImageUrls[0] = currentOutcomeImageUrl;
+    }
+    existingSupportingImages.slice(0, 4).forEach((imgUrl, idx) => {
+      uploadedImageUrls[idx + 1] = imgUrl;
+    });
+
     const brief = descriptionText
       .replace(/\n\n?Subject Stream:[\s\S]*/i, '')
       .replace(/\n\n?Supporting Images:[\s\S]*/i, '')
@@ -260,7 +292,7 @@ if (form) {
     setStatus('Saving assessment task...', false);
 
     const imageUrls = uploadedImageUrls.filter(Boolean);
-    const outcomeImageUrl = imageUrls.length ? imageUrls[0] : null;
+    const outcomeImageUrl = imageUrls.length ? imageUrls[0] : (currentOutcomeImageUrl || null);
 
     const assessmentFocus = [
       achiever ? `Achiever:\n${achiever}` : '',
