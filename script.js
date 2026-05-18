@@ -84,6 +84,9 @@ function editUrlForActivity(a) {
   if (category === 'assessment') {
     return `/admin_upload_assessment_task.html?id=${Number(a.id)}`;
   }
+  if (category === 'url idea') {
+    return `/admin_upload_url_idea.html?id=${Number(a.id)}`;
+  }
   return `/admin_upload_activity.html?id=${Number(a.id)}`;
 }
 

@@ -43,14 +43,14 @@
   <main class="admin-page-wrap">
     <section class="admin-page-head">
       <div>
-        <h1>Upload URL Idea</h1>
-        <p>Create a simplified card with an external URL and assign it to URL Idea.</p>
+        <h1 id="url-idea-page-title">Upload URL Idea</h1>
+        <p id="url-idea-page-subtitle">Create a simplified card with an external URL and assign it to URL Idea.</p>
       </div>
       <a class="admin-back-btn" href="/index.html">&#8592; Back to Hub</a>
     </section>
 
     <section class="admin-card">
-      <h2>New URL Idea</h2>
+      <h2 id="url-idea-form-heading">New URL Idea</h2>
       <form id="url-idea-form" class="admin-form-grid" style="grid-template-columns:1fr;">
         <div class="field">
           <label for="idea-name">Activity Name</label>
@@ -85,7 +85,7 @@
         </div>
 
         <div class="actions-row" style="margin-top:0.2rem;">
-          <button class="admin-primary-btn" type="submit">Save URL Idea</button>
+          <button class="admin-primary-btn" id="url-idea-submit-btn" type="submit">Save URL Idea</button>
           <a class="admin-reset-btn" href="/index.html" style="display:inline-block; text-decoration:none;">Cancel</a>
         </div>
       </form>
