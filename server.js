@@ -46,7 +46,14 @@ const uploadsDir = path.join(__dirname, 'images', 'uploads');
 app.use(express.static(path.join(__dirname)));
 
 app.get('/favicon.ico', (_req, res) => {
-  res.status(204).end();
+  res.setHeader('Content-Type', 'image/svg+xml');
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(`
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+      <rect width="64" height="64" rx="14" fill="#6b2b90"/>
+      <path d="M18 20h28v8H18zm0 16h18v8H18z" fill="#fff"/>
+    </svg>
+  `);
 });
 
 const objectStorageEnabled = !!(
@@ -480,13 +487,28 @@ app.get(
     if (!passport._strategy('google')) {
       return res.status(500).send('Google auth is not configured yet.');
     }
-    return passport.authenticate('google', {
-      failureRedirect: '/index.html?auth=failed',
+    return passport.authenticate('google', (err, user, info) => {
+      if (err) {
+        console.error('[google-auth] callback error:', err.message);
+        return res.redirect('/index.html?auth=failed');
+      }
+
+      if (!user) {
+        console.error('[google-auth] callback rejected:', info && info.message ? info.message : 'no user returned');
+        return res.redirect('/index.html?auth=failed');
+      }
+
+      return req.logIn(user, (loginErr) => {
+        if (loginErr) {
+          console.error('[google-auth] login error:', loginErr.message);
+          return res.redirect('/index.html?auth=failed');
+        }
+
+        return res.redirect('/index.html');
+      });
     })(req, res, next);
   },
-  (_req, res) => {
-    res.redirect('/index.html');
-  }
+  (_req, res) => res.redirect('/index.html')
 );
 
 app.get('/auth/logout', (req, res, next) => {
