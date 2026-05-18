@@ -230,7 +230,25 @@ filterCategory?.addEventListener('change', loadLibrary);
 filterUploadType?.addEventListener('change', loadLibrary);
 filterSort?.addEventListener('change',  loadLibrary);
 
+// ── URL Ideas section ─────────────────────────────────────
+async function loadUrlIdeas() {
+  const grid = document.getElementById('url-ideas-grid');
+  if (!grid) return;
+  try {
+    const res = await fetch('/api/activities?category=url%20idea&sort=az');
+    if (!res.ok) throw new Error(res.statusText);
+    let data = await res.json();
+    data = data.filter(isRenderableActivity);
+    grid.innerHTML = data.length
+      ? data.map(buildCard).join('')
+      : '<p style="color:#666;font-size:0.85rem;padding:0.5rem 0">No URL Ideas available.</p>';
+  } catch {
+    showGridError(grid, 'Could not load URL Ideas.');
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────
 loadThisWeek();
+loadUrlIdeas();
 loadLibrary();
 
