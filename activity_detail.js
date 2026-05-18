@@ -115,6 +115,19 @@ function normalizeHttpUrl(url) {
   return value;
 }
 
+function extractSupportingImageUrls(descriptionText) {
+  const raw = String(descriptionText || '');
+  if (!raw) return [];
+
+  const match = raw.match(/Supporting Images:\n([\s\S]*)/i);
+  if (!match || !match[1]) return [];
+
+  return match[1]
+    .split(/\r?\n/)
+    .map((line) => normalizeHttpUrl(line))
+    .filter(Boolean);
+}
+
 async function loadActivity() {
   if (!mount) return;
 
@@ -138,6 +151,9 @@ async function loadActivity() {
     const ideaUrl = normalizeHttpUrl(a.idea_url);
     const isUrlIdea = String(a.activity_category || '').toLowerCase() === 'url idea';
     const isAssessmentTask = String(a.activity_category || '').toLowerCase() === 'assessment';
+    const supportingImageUrls = extractSupportingImageUrls(a.description);
+    const primaryImageUrl = normalizeHttpUrl(a.outcome_image_url)
+      || (isAssessmentTask ? supportingImageUrls[0] || '' : '');
     const assessmentDetails = isAssessmentTask ? toLines(a.resources) : [];
     const resourcesEquipment = isAssessmentTask
       ? toLines(a.equipment)
@@ -160,7 +176,7 @@ async function loadActivity() {
           <a class="detail-back" href="/index.html">&#8592; Back to activity library</a>
         </div>
         <div class="detail-image">
-          <img src="${escHtml(a.outcome_image_url || fallbackImage)}" alt="${escHtml(a.name)} outcome" loading="lazy" onerror="this.onerror=null;this.src='${escHtml(fallbackImage)}'" />
+          <img src="${escHtml(primaryImageUrl || fallbackImage)}" alt="${escHtml(a.name)} outcome" loading="lazy" onerror="this.onerror=null;this.src='${escHtml(fallbackImage)}'" />
         </div>
       </section>
 
