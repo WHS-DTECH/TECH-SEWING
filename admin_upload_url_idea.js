@@ -76,7 +76,7 @@ if (form) {
           description: payload.description,
           color: payload.color,
           is_this_week: !!fallback.is_this_week,
-          outcome_image_url: fallback.outcome_image_url || null,
+          outcome_image_url: null,
           idea_url: payload.idea_url,
           resources: fallback.resources || null,
           equipment: fallback.equipment || null,

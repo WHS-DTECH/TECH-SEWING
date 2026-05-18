@@ -144,6 +144,131 @@ function createImageFileName(mimeType) {
   return `activity-${Date.now()}-${crypto.randomUUID()}${ext}`;
 }
 
+function normalizeHttpUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (!/^https?:\/\//i.test(raw)) return '';
+
+  try {
+    const url = new URL(raw);
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    return url.toString();
+  } catch (_err) {
+    return '';
+  }
+}
+
+function resolveHttpUrl(candidate, baseUrl) {
+  const raw = String(candidate || '').trim();
+  if (!raw) return '';
+  if (/^data:/i.test(raw)) return '';
+
+  try {
+    const url = new URL(raw, baseUrl);
+    if (!['http:', 'https:'].includes(url.protocol)) return '';
+    return url.toString();
+  } catch (_err) {
+    return '';
+  }
+}
+
+function extractRepresentativeImageCandidates(html, pageUrl) {
+  const source = String(html || '');
+  if (!source) return [];
+
+  const out = [];
+  const seen = new Set();
+
+  const pushCandidate = (value) => {
+    const resolved = resolveHttpUrl(value, pageUrl);
+    if (!resolved) return;
+    const key = resolved.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(resolved);
+  };
+
+  const metaRegex = /<meta\s+[^>]*>/gi;
+  let metaMatch;
+  while ((metaMatch = metaRegex.exec(source)) !== null) {
+    const tag = metaMatch[0];
+    const property = (tag.match(/\bproperty\s*=\s*["']([^"']+)["']/i)?.[1] || '').toLowerCase();
+    const name = (tag.match(/\bname\s*=\s*["']([^"']+)["']/i)?.[1] || '').toLowerCase();
+    const content = tag.match(/\bcontent\s*=\s*["']([^"']+)["']/i)?.[1] || '';
+    const key = property || name;
+
+    if (key === 'og:image' || key === 'og:image:url' || key === 'twitter:image' || key === 'twitter:image:src') {
+      pushCandidate(content);
+    }
+  }
+
+  const linkRegex = /<link\s+[^>]*>/gi;
+  let linkMatch;
+  while ((linkMatch = linkRegex.exec(source)) !== null) {
+    const tag = linkMatch[0];
+    const rel = (tag.match(/\brel\s*=\s*["']([^"']+)["']/i)?.[1] || '').toLowerCase();
+    const href = tag.match(/\bhref\s*=\s*["']([^"']+)["']/i)?.[1] || '';
+    if (rel.includes('image_src') || rel.includes('apple-touch-icon') || rel.includes('icon')) {
+      pushCandidate(href);
+    }
+  }
+
+  const imgRegex = /<img\s+[^>]*src\s*=\s*["']([^"']+)["'][^>]*>/gi;
+  let imgMatch;
+  let imgCount = 0;
+  while ((imgMatch = imgRegex.exec(source)) !== null && imgCount < 8) {
+    imgCount += 1;
+    pushCandidate(imgMatch[1]);
+  }
+
+  return out;
+}
+
+async function scrapeRepresentativeImageUrl(pageUrl) {
+  const safeUrl = normalizeHttpUrl(pageUrl);
+  if (!safeUrl) return null;
+
+  if (/\.(png|jpe?g|webp|gif|bmp|svg)(?:[?#].*)?$/i.test(safeUrl)) {
+    return safeUrl;
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch(safeUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      signal: controller.signal,
+      headers: {
+        'user-agent': 'Mozilla/5.0 (compatible; SewingRoomBot/1.0; +https://westlandhigh.school.nz)',
+        accept: 'text/html,application/xhtml+xml,image/avif,image/webp,image/apng,*/*;q=0.8',
+      },
+    });
+
+    if (!response.ok) return null;
+
+    const finalUrl = normalizeHttpUrl(response.url) || safeUrl;
+    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+
+    if (contentType.startsWith('image/')) {
+      return finalUrl;
+    }
+
+    if (!contentType.includes('text/html')) {
+      return null;
+    }
+
+    const html = await response.text();
+    const candidates = extractRepresentativeImageCandidates(html, finalUrl);
+    return candidates.length ? candidates[0] : null;
+  } catch (_err) {
+    return null;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function uploadToCloudinary(fileBuffer, mimeType, originalFileName) {
   const publicId = `activity-${Date.now()}-${crypto.randomUUID()}`;
 
@@ -1181,6 +1306,13 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
       return res.status(400).json({ error: 'Duration must be between 0 and 24 hours' });
     }
 
+    const safeIdeaUrl = idea_url ? normalizeHttpUrl(idea_url) : '';
+    let safeOutcomeImageUrl = outcome_image_url ? normalizeHttpUrl(outcome_image_url) : '';
+
+    if (safeCategory === 'URL Idea' && safeIdeaUrl && !safeOutcomeImageUrl) {
+      safeOutcomeImageUrl = (await scrapeRepresentativeImageUrl(safeIdeaUrl)) || '';
+    }
+
     const result = await pool.query(
       `INSERT INTO activities (
          name,
@@ -1213,8 +1345,8 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
         description ? String(description).trim() : null,
         safeColor,
         !!is_this_week,
-        outcome_image_url ? String(outcome_image_url).trim() : null,
-        idea_url ? String(idea_url).trim() : null,
+        safeOutcomeImageUrl || null,
+        safeIdeaUrl || null,
         resources ? String(resources).trim() : null,
         equipment ? String(equipment).trim() : null,
         instructions ? String(instructions).trim() : null,
@@ -1318,6 +1450,24 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
       return res.status(400).json({ error: 'Duration must be between 0 and 24 hours' });
     }
 
+    const safeIdeaUrl = idea_url ? normalizeHttpUrl(idea_url) : '';
+    let safeOutcomeImageUrl = outcome_image_url ? normalizeHttpUrl(outcome_image_url) : '';
+
+    if (safeCategory === 'URL Idea' && safeIdeaUrl && !safeOutcomeImageUrl) {
+      const existing = await pool.query(
+        `SELECT outcome_image_url
+         FROM activities
+         WHERE id = $1
+           AND hub_site = $2
+         LIMIT 1`,
+        [id, HUB_SITE_KEY]
+      );
+
+      const scraped = await scrapeRepresentativeImageUrl(safeIdeaUrl);
+      const existingImage = normalizeHttpUrl(existing.rows[0]?.outcome_image_url);
+      safeOutcomeImageUrl = scraped || existingImage || '';
+    }
+
     const result = await pool.query(
       `UPDATE activities
        SET name = $2,
@@ -1352,8 +1502,8 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
         description ? String(description).trim() : null,
         safeColor,
         !!is_this_week,
-        outcome_image_url ? String(outcome_image_url).trim() : null,
-        idea_url ? String(idea_url).trim() : null,
+        safeOutcomeImageUrl || null,
+        safeIdeaUrl || null,
         resources ? String(resources).trim() : null,
         equipment ? String(equipment).trim() : null,
         instructions ? String(instructions).trim() : null,
@@ -1428,10 +1578,12 @@ app.post('/api/admin/url-ideas', requireAuth, requireUploadPermission, async (re
       return res.status(400).json({ error: 'Missing required fields: name, type, idea_url' });
     }
 
-    const safeUrl = String(idea_url).trim();
-    if (!/^https?:\/\//i.test(safeUrl)) {
+    const safeUrl = normalizeHttpUrl(idea_url);
+    if (!safeUrl) {
       return res.status(400).json({ error: 'URL must start with http:// or https://' });
     }
+
+    const representativeImageUrl = await scrapeRepresentativeImageUrl(safeUrl);
 
     const allowedColors = new Set([
       'color-rose',
@@ -1455,9 +1607,10 @@ app.post('/api/admin/url-ideas', requireAuth, requireUploadPermission, async (re
          description,
          color,
          is_this_week,
+         outcome_image_url,
          idea_url,
          hub_site
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
        RETURNING id`,
       [
         String(name).trim(),
@@ -1469,6 +1622,7 @@ app.post('/api/admin/url-ideas', requireAuth, requireUploadPermission, async (re
         description ? String(description).trim() : null,
         safeColor,
         false,
+        representativeImageUrl,
         safeUrl,
         HUB_SITE_KEY,
       ]
