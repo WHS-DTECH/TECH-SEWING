@@ -6,6 +6,7 @@ const path      = require('path');
 const fs        = require('fs');
 const crypto    = require('crypto');
 const session   = require('express-session');
+const PgSession = require('connect-pg-simple')(session);
 const passport  = require('passport');
 const multer    = require('multer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
@@ -174,18 +175,27 @@ async function ensureSchema() {
 // ── Middleware ───────────────────────────────────────────
 app.use(express.json());
 
+const sessionStore = new PgSession({
+  pool,
+  tableName: 'user_sessions',
+  createTableIfMissing: true,
+  pruneSessionInterval: 60 * 15,
+});
+
 app.set('trust proxy', 1);
 app.use(
   session({
+    store: sessionStore,
     name: 'sewing.sid',
     secret: process.env.SESSION_SECRET || 'dev-only-secret-change-me',
     resave: false,
     saveUninitialized: false,
+    rolling: true,
     cookie: {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      maxAge: 1000 * 60 * 60 * 24 * 7,
+      maxAge: 1000 * 60 * 60 * 24 * 30,
     },
   })
 );
