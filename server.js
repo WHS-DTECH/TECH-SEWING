@@ -33,6 +33,44 @@ const CLOUDINARY_API_KEY = (process.env.CLOUDINARY_API_KEY || '').trim();
 const CLOUDINARY_API_SECRET = (process.env.CLOUDINARY_API_SECRET || '').trim();
 const CLOUDINARY_UPLOAD_FOLDER = (process.env.CLOUDINARY_UPLOAD_FOLDER || 'sewing-room-activities').trim();
 const HUB_SITE_KEY = (process.env.HUB_SITE_KEY || 'TECH-SEWING').trim().toUpperCase();
+const NZQA_MPT_LEVEL1_STANDARDS = [
+  {
+    standard_number: '92012',
+    subject_set: 'Materials and Processing Technology (MPT)',
+    standard_name: 'Develop a Materials and Processing Technology outcome in an authentic context',
+    level: 'Level 1',
+    credits: 6,
+    assessment_type: 'Internal',
+    nzqa_search_url: 'https://www.nzqa.govt.nz/ncea/assessment/search.do?query=Materials+and+Processing+Technology&view=achievements&level=01',
+  },
+  {
+    standard_number: '92013',
+    subject_set: 'Materials and Processing Technology (MPT)',
+    standard_name: 'Experiment with different materials to develop a Materials and Processing Technology outcome',
+    level: 'Level 1',
+    credits: 6,
+    assessment_type: 'Internal',
+    nzqa_search_url: 'https://www.nzqa.govt.nz/ncea/assessment/search.do?query=Materials+and+Processing+Technology&view=achievements&level=01',
+  },
+  {
+    standard_number: '92014',
+    subject_set: 'Materials and Processing Technology (MPT)',
+    standard_name: 'Demonstrate understanding of sustainable practices in the development of a Materials and Processing Technology design',
+    level: 'Level 1',
+    credits: 4,
+    assessment_type: 'External',
+    nzqa_search_url: 'https://www.nzqa.govt.nz/ncea/assessment/search.do?query=Materials+and+Processing+Technology&view=achievements&level=01',
+  },
+  {
+    standard_number: '92015',
+    subject_set: 'Materials and Processing Technology (MPT)',
+    standard_name: 'Demonstrate understanding of techniques selected for a feasible Materials and Processing Technology outcome',
+    level: 'Level 1',
+    credits: 4,
+    assessment_type: 'External',
+    nzqa_search_url: 'https://www.nzqa.govt.nz/ncea/assessment/search.do?query=Materials+and+Processing+Technology&view=achievements&level=01',
+  },
+];
 
 // ── Database connection ──────────────────────────────────
 const pool = new Pool({
@@ -910,6 +948,13 @@ app.get('/api/suggestions', requireAuth, requireAdmin, async (req, res) => {
     console.error('GET /api/suggestions error:', err.message);
     res.status(500).json({ error: 'Database error' });
   }
+});
+
+app.get('/api/admin/assessment-standards', requireAuth, requireAdmin, async (_req, res) => {
+  res.json({
+    source: 'nzqa-search-level-1-mpt',
+    standards: NZQA_MPT_LEVEL1_STANDARDS,
+  });
 });
 
 // ── GET /api/activities ──────────────────────────────────

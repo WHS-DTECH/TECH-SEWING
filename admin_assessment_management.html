@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Upload URL Idea - Sewing Room</title>
+  <title>Assessment Management - Sewing Room</title>
   <link rel="icon" type="image/x-icon" href="/images/favicon.ico" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="admin_pages.css" />
@@ -43,58 +43,65 @@
   <main class="admin-page-wrap">
     <section class="admin-page-head">
       <div>
-        <h1>Upload URL Idea</h1>
-        <p>Create a simplified card with an external URL and assign it to URL Idea.</p>
+        <h1>Assessment Management</h1>
+        <p>NZQA Level 1 Materials and Processing Technology achievement standards.</p>
       </div>
       <a class="admin-back-btn" href="/index.html">&#8592; Back to Hub</a>
     </section>
 
     <section class="admin-card">
-      <h2>New URL Idea</h2>
-      <form id="url-idea-form" class="admin-form-grid" style="grid-template-columns:1fr;">
+      <h2>Assessment Standards Manager</h2>
+      <form id="assessment-filters" class="admin-form-grid" style="grid-template-columns: 1.2fr 1fr 1fr auto; align-items:end;">
         <div class="field">
-          <label for="idea-name">Activity Name</label>
-          <input id="idea-name" required maxlength="255" />
-        </div>
-
-        <div class="field">
-          <label for="idea-type">Type</label>
-          <input id="idea-type" required maxlength="50" placeholder="Machine Sewing, Embroidery..." />
-        </div>
-
-        <div class="field">
-          <label for="idea-color">Card Color</label>
-          <select id="idea-color" required>
-            <option value="color-rose">Rose</option>
-            <option value="color-teal" selected>Teal</option>
-            <option value="color-sage">Sage</option>
-            <option value="color-lavender">Lavender</option>
-            <option value="color-coral">Coral</option>
-            <option value="color-gold">Gold</option>
+          <label for="subject-set-filter">Subject Set</label>
+          <select id="subject-set-filter">
+            <option value="">All subject sets</option>
           </select>
         </div>
 
         <div class="field">
-          <label for="idea-url">URL (shown on card)</label>
-          <input id="idea-url" type="url" required placeholder="https://example.com/idea" />
+          <label for="level-filter">Level</label>
+          <select id="level-filter">
+            <option value="">All levels</option>
+            <option value="Level 1" selected>Level 1</option>
+          </select>
         </div>
 
         <div class="field">
-          <label for="idea-description">Short Description</label>
-          <textarea id="idea-description" rows="4" style="border:1.5px solid #9fc0de;border-radius:8px;padding:0.6rem 0.65rem;font-size:0.9rem;resize:vertical;"></textarea>
+          <label for="standard-search">Standard Number</label>
+          <input id="standard-search" placeholder="e.g. 92013" />
         </div>
 
-        <div class="actions-row" style="margin-top:0.2rem;">
-          <button class="admin-primary-btn" type="submit">Save URL Idea</button>
-          <a class="admin-reset-btn" href="/index.html" style="display:inline-block; text-decoration:none;">Cancel</a>
+        <div class="actions-row" style="margin:0;">
+          <button class="admin-primary-btn" type="button" id="refresh-standards">Refresh NZQA Data</button>
         </div>
       </form>
 
-      <p id="url-idea-status" class="admin-note"></p>
+      <p id="assessment-management-status" class="admin-note"></p>
+
+      <div class="admin-table-wrap">
+        <table class="admin-table" id="assessment-standards-table">
+          <thead>
+            <tr>
+              <th>Standard #</th>
+              <th>Standard Name</th>
+              <th>Level</th>
+              <th>Credits</th>
+              <th>Type</th>
+              <th>NZQA</th>
+            </tr>
+          </thead>
+          <tbody id="assessment-standards-body">
+            <tr>
+              <td colspan="6" style="text-align:left; color:#5c7590;">Loading standards...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </main>
 
   <script src="auth-client.js"></script>
-  <script src="admin_upload_url_idea.js"></script>
+  <script src="admin_assessment_management.js"></script>
 </body>
 </html>
