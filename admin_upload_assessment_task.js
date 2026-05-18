@@ -3,9 +3,16 @@ const statusEl = document.getElementById('assessment-task-status');
 const standardsStatusEl = document.getElementById('assessment-standards-status');
 const standardSelectEl = document.getElementById('assessment-standard-select');
 const standardDetailsEl = document.getElementById('assessment-standard-details');
+const pageTitle = document.getElementById('assessment-page-title');
+const pageSubtitle = document.getElementById('assessment-page-subtitle');
+const formHeading = document.getElementById('assessment-form-heading');
+const submitBtn = document.getElementById('assessment-submit-btn');
 const imageInputs = Array.from(document.querySelectorAll('.assessment-image-input'));
 const uploadedImageUrls = new Array(5).fill(null);
 let assessmentStandards = [];
+const params = new URLSearchParams(window.location.search);
+const editId = Number(params.get('id'));
+const isEditMode = Number.isInteger(editId) && editId > 0;
 
 function setStatus(message, isError) {
   if (!statusEl) return;
@@ -19,6 +26,27 @@ function value(id) {
 
 function checked(id) {
   return !!document.getElementById(id)?.checked;
+}
+
+function setValue(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.value = v == null ? '' : String(v);
+}
+
+function setChecked(id, v) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.checked = !!v;
+}
+
+function extractSection(text, heading) {
+  const raw = String(text || '');
+  if (!raw) return '';
+  const escaped = heading.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`${escaped}:\\n([\\s\\S]*?)(?:\\n\\n[A-Za-z][^\\n]*:\\n|$)`, 'i');
+  const match = raw.match(regex);
+  return match && match[1] ? match[1].trim() : '';
 }
 
 function setStandardsStatus(message, isError) {
@@ -90,6 +118,48 @@ standardSelectEl?.addEventListener('change', () => {
   standardDetailsEl.value = buildStandardDetails(selected);
 });
 
+async function loadAssessmentForEdit() {
+  if (!isEditMode) return;
+
+  try {
+    const res = await fetch(`/api/activities/${editId}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Could not load assessment task');
+
+    setValue('assessment-name', data.name);
+    setValue('assessment-year', data.year_level);
+    setValue('assessment-type', data.type);
+    setValue('assessment-category', data.activity_category || 'Assessment');
+    setValue('assessment-difficulty', data.difficulty || 'Intermediate');
+    setValue('assessment-duration', data.duration_hours);
+    setValue('assessment-color', data.color || 'color-lavender');
+    setChecked('assessment-week', data.is_this_week);
+
+    const descriptionText = String(data.description || '');
+    const subjectMatch = descriptionText.match(/Subject Stream:\s*(.+)/i);
+    const brief = descriptionText
+      .replace(/\n\n?Subject Stream:[\s\S]*/i, '')
+      .replace(/\n\n?Supporting Images:[\s\S]*/i, '')
+      .trim();
+
+    setValue('assessment-brief-description', brief);
+    setValue('assessment-subject-stream', subjectMatch ? subjectMatch[1].trim() : '');
+    setValue('assessment-task-list', data.instructions || '');
+    setValue('assessment-standard-details', data.resources || '');
+    setValue('assessment-submission', data.equipment || '');
+    setValue('assessment-progress', data.class_management_notes || '');
+    setValue('assessment-implications', data.class_preparation || '');
+
+    const focus = String(data.assessment_focus || '');
+    setValue('assessment-achiever', extractSection(focus, 'Achiever'));
+    setValue('assessment-merit', extractSection(focus, 'Merit'));
+    setValue('assessment-excellence', extractSection(focus, 'Excellence'));
+    setValue('assessment-feedback', extractSection(focus, 'Feedback and Trialling'));
+  } catch (err) {
+    setStatus(err.message || 'Could not load assessment task for editing', true);
+  }
+}
+
 async function uploadImageFile(file) {
   const formData = new FormData();
   formData.append('image', file);
@@ -127,6 +197,14 @@ imageInputs.forEach((input) => {
 });
 
 loadAssessmentStandardsForForm();
+
+if (isEditMode) {
+  if (pageTitle) pageTitle.textContent = 'Edit Assessment Task';
+  if (pageSubtitle) pageSubtitle.textContent = 'Update an existing assessment task and save your changes.';
+  if (formHeading) formHeading.textContent = `Edit Assessment Task #${editId}`;
+  if (submitBtn) submitBtn.textContent = 'Update Assessment Task';
+  loadAssessmentForEdit();
+}
 
 if (form) {
   form.addEventListener('submit', async (e) => {
@@ -218,8 +296,11 @@ if (form) {
     };
 
     try {
-      const res = await fetch('/api/admin/activities', {
-        method: 'POST',
+      const saveUrl = isEditMode ? `/api/admin/activities/${editId}` : '/api/admin/activities';
+      const saveMethod = isEditMode ? 'PUT' : 'POST';
+
+      const res = await fetch(saveUrl, {
+        method: saveMethod,
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(payload),
@@ -228,10 +309,10 @@ if (form) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Could not save assessment task');
 
-      setStatus('Assessment task saved. Opening preview...', false);
+      setStatus(isEditMode ? 'Assessment task updated. Opening preview...' : 'Assessment task saved. Opening preview...', false);
       window.location.href = `/activity_detail.html?id=${data.id}`;
     } catch (err) {
-      setStatus(err.message || 'Could not save assessment task', true);
+      setStatus(err.message || (isEditMode ? 'Could not update assessment task' : 'Could not save assessment task'), true);
     }
   });
 }

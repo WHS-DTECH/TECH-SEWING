@@ -79,6 +79,14 @@ function shortText(text, maxLen = 120) {
   return `${raw.slice(0, maxLen - 1)}...`;
 }
 
+function editUrlForActivity(a) {
+  const category = String(a?.activity_category || '').toLowerCase();
+  if (category === 'assessment') {
+    return `/admin_upload_assessment_task.html?id=${Number(a.id)}`;
+  }
+  return `/admin_upload_activity.html?id=${Number(a.id)}`;
+}
+
 function buildTeacherExtra(a) {
   if (!a.canViewTeacherCard) return '';
 
@@ -94,7 +102,7 @@ function buildTeacherExtra(a) {
       ${classMgmt ? `<p><strong>Class Mgmt:</strong> ${escHtml(classMgmt)}</p>` : ''}
       ${prep ? `<p><strong>Preparation:</strong> ${escHtml(prep)}</p>` : ''}
       ${assess ? `<p><strong>Assessment:</strong> ${escHtml(assess)}</p>` : ''}
-      <a class="teacher-edit-link" href="/admin_upload_activity.html?id=${Number(a.id)}">Edit Activity</a>
+      <a class="teacher-edit-link" href="${escHtml(editUrlForActivity(a))}">Edit Activity</a>
     </div>
   `;
 }

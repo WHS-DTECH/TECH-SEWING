@@ -43,14 +43,14 @@
   <main class="admin-page-wrap">
     <section class="admin-page-head">
       <div>
-        <h1>Upload Assessment Task</h1>
-        <p>Create an assessment task entry with criteria, task details, and supporting images.</p>
+        <h1 id="assessment-page-title">Upload Assessment Task</h1>
+        <p id="assessment-page-subtitle">Create an assessment task entry with criteria, task details, and supporting images.</p>
       </div>
       <a class="admin-back-btn" href="/index.html">&#8592; Back to Hub</a>
     </section>
 
     <section class="admin-card">
-      <h2>Assessment Basics</h2>
+      <h2 id="assessment-form-heading">Assessment Basics</h2>
       <form id="assessment-task-form" class="admin-form-grid" style="grid-template-columns:1fr 1fr;">
         <div class="field">
           <label for="assessment-name">Assessment Task Name</label>
@@ -198,7 +198,7 @@
         </div>
 
         <div class="actions-row" style="grid-column:1 / -1; margin-top: 0.1rem;">
-          <button class="admin-primary-btn" type="submit">Save Assessment Task</button>
+          <button class="admin-primary-btn" id="assessment-submit-btn" type="submit">Save Assessment Task</button>
           <a class="admin-reset-btn" href="/index.html" style="display:inline-block; text-decoration:none;">Cancel</a>
         </div>
       </form>

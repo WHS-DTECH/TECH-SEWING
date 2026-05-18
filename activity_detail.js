@@ -55,12 +55,20 @@ function instructionsMarkup(activity) {
   `;
 }
 
+function editUrlForActivity(activity) {
+  const category = String(activity?.activity_category || '').toLowerCase();
+  if (category === 'assessment') {
+    return `/admin_upload_assessment_task.html?id=${Number(activity.id)}`;
+  }
+  return `/admin_upload_activity.html?id=${Number(activity.id)}`;
+}
+
 function teacherToolbarMarkup(activity) {
   if (!activity.canViewTeacherCard) return '';
   return `
     <div class="teacher-toolbar" id="teacher-toolbar">
       <span class="teacher-toolbar-label">Teacher View</span>
-      <a class="teacher-edit-link" href="/admin_upload_activity.html?id=${activity.id}">Edit Activity</a>
+      <a class="teacher-edit-link" href="${escHtml(editUrlForActivity(activity))}">Edit Activity</a>
       <button class="teacher-toggle-btn" id="student-view-toggle" type="button">Preview as Student</button>
     </div>
   `;
