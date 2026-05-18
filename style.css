@@ -397,6 +397,11 @@ a { text-decoration: none; color: inherit; }
   color: #6b2d8b;
 }
 
+.card-footer-upload-assessment {
+  border-top: 1px solid #d6e4f3;
+  color: #1f5f93;
+}
+
 .teacher-extra {
   margin-top: 0.35rem;
   border: 1px solid #d8e3ef;

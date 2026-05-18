@@ -13,10 +13,9 @@ function buildCard(a) {
   const teacherExtra = buildTeacherExtra(a);
   const ideaUrl = normalizeHttpUrl(a.idea_url);
   const uploadType = getUploadType(a);
-  const uploadTypeLabel = uploadType === 'url-idea' ? 'URL Idea' : 'Activity';
-  const footerClass = uploadType === 'url-idea'
-    ? 'card-footer-upload card-footer-upload-url-idea'
-    : 'card-footer-upload card-footer-upload-activity';
+  const footerMeta = getCardFooterMeta(a);
+  const uploadTypeLabel = footerMeta.label;
+  const footerClass = footerMeta.className;
 
   return `
     <a class="activity-card activity-card-link ${a.color}" href="activity_detail.html?id=${Number(a.id)}"
@@ -53,6 +52,28 @@ function buildCard(a) {
 function getUploadType(a) {
   const isUrlIdea = String(a?.activity_category || '').toLowerCase() === 'url idea';
   return isUrlIdea ? 'url-idea' : 'activity';
+}
+
+function getCardFooterMeta(a) {
+  const category = String(a?.activity_category || '').toLowerCase();
+  if (category === 'url idea') {
+    return {
+      label: 'URL Idea',
+      className: 'card-footer-upload card-footer-upload-url-idea',
+    };
+  }
+
+  if (category === 'assessment') {
+    return {
+      label: 'Assessment Task',
+      className: 'card-footer-upload card-footer-upload-assessment',
+    };
+  }
+
+  return {
+    label: 'Activity',
+    className: 'card-footer-upload card-footer-upload-activity',
+  };
 }
 
 function isRenderableActivity(a) {
