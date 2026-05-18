@@ -32,6 +32,7 @@ const CLOUDINARY_CLOUD_NAME = (process.env.CLOUDINARY_CLOUD_NAME || '').trim();
 const CLOUDINARY_API_KEY = (process.env.CLOUDINARY_API_KEY || '').trim();
 const CLOUDINARY_API_SECRET = (process.env.CLOUDINARY_API_SECRET || '').trim();
 const CLOUDINARY_UPLOAD_FOLDER = (process.env.CLOUDINARY_UPLOAD_FOLDER || 'sewing-room-activities').trim();
+const HUB_SITE_KEY = (process.env.HUB_SITE_KEY || 'TECH-SEWING').trim().toUpperCase();
 
 // ── Database connection ──────────────────────────────────
 const pool = new Pool({
@@ -156,7 +157,29 @@ async function ensureSchema() {
     ADD COLUMN IF NOT EXISTS activity_category VARCHAR(20) DEFAULT 'Practice',
     ADD COLUMN IF NOT EXISTS class_management_notes TEXT,
     ADD COLUMN IF NOT EXISTS class_preparation TEXT,
-    ADD COLUMN IF NOT EXISTS assessment_focus TEXT
+    ADD COLUMN IF NOT EXISTS assessment_focus TEXT,
+    ADD COLUMN IF NOT EXISTS hub_site VARCHAR(100)
+  `);
+
+  await pool.query(
+    `UPDATE activities
+     SET hub_site = 'UNSCOPED'
+     WHERE hub_site IS NULL OR BTRIM(hub_site) = ''`
+  );
+
+  await pool.query(`
+    ALTER TABLE activities
+    ALTER COLUMN hub_site SET DEFAULT 'UNSCOPED'
+  `);
+
+  await pool.query(`
+    ALTER TABLE activities
+    ALTER COLUMN hub_site SET NOT NULL
+  `);
+
+  await pool.query(`
+    CREATE INDEX IF NOT EXISTS idx_activities_hub_site
+    ON activities (hub_site)
   `);
 
   // Normalize legacy or inconsistent category values before adding the CHECK constraint.
@@ -439,6 +462,18 @@ function stripTeacherOnlyFields(activity) {
     class_preparation: null,
     assessment_focus: null,
   };
+}
+
+function addActivityVisibilityGuards(conditions) {
+  conditions.push(`COALESCE(BTRIM(name), '') <> ''`);
+  conditions.push(`COALESCE(BTRIM(year_level), '') <> ''`);
+  conditions.push(`COALESCE(BTRIM(type), '') <> ''`);
+  conditions.push(`COALESCE(BTRIM(difficulty), '') <> ''`);
+}
+
+function addHubScopeCondition(params, conditions) {
+  params.push(HUB_SITE_KEY);
+  conditions.push(`hub_site = $${params.length}`);
 }
 
 async function requireUploadPermission(req, res, next) {
@@ -809,6 +844,9 @@ app.get('/api/activities', async (req, res) => {
     const params = [];
     const conditions = [];
 
+    addHubScopeCondition(params, conditions);
+    addActivityVisibilityGuards(conditions);
+
     if (week === 'true') {
       conditions.push('is_this_week = TRUE');
     }
@@ -874,7 +912,18 @@ app.get('/api/activities/:id', async (req, res) => {
       return res.status(400).json({ error: 'Invalid activity id' });
     }
 
-    const result = await pool.query('SELECT * FROM activities WHERE id = $1 LIMIT 1', [id]);
+    const result = await pool.query(
+      `SELECT *
+       FROM activities
+       WHERE id = $1
+         AND hub_site = $2
+         AND COALESCE(BTRIM(name), '') <> ''
+         AND COALESCE(BTRIM(year_level), '') <> ''
+         AND COALESCE(BTRIM(type), '') <> ''
+         AND COALESCE(BTRIM(difficulty), '') <> ''
+       LIMIT 1`,
+      [id, HUB_SITE_KEY]
+    );
     if (!result.rows.length) {
       return res.status(404).json({ error: 'Activity not found' });
     }
@@ -982,8 +1031,9 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
          instructions,
          class_management_notes,
          class_preparation,
-         assessment_focus
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+         assessment_focus,
+         hub_site
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
        RETURNING id`,
       [
         String(name).trim(),
@@ -1003,6 +1053,7 @@ app.post('/api/admin/activities', requireAuth, requireUploadPermission, async (r
         class_management_notes ? String(class_management_notes).trim() : null,
         class_preparation ? String(class_preparation).trim() : null,
         assessment_focus ? String(assessment_focus).trim() : null,
+        HUB_SITE_KEY,
       ]
     );
 
@@ -1094,8 +1145,10 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
              instructions = $15,
              class_management_notes = $16,
              class_preparation = $17,
-             assessment_focus = $18
+               assessment_focus = $18,
+             hub_site = $19
        WHERE id = $1
+           AND hub_site = $19
        RETURNING id`,
       [
         id,
@@ -1116,6 +1169,7 @@ app.put('/api/admin/activities/:id', requireAuth, requireUploadPermission, async
         class_management_notes ? String(class_management_notes).trim() : null,
         class_preparation ? String(class_preparation).trim() : null,
         assessment_focus ? String(assessment_focus).trim() : null,
+        HUB_SITE_KEY,
       ]
     );
 
@@ -1165,8 +1219,9 @@ app.post('/api/admin/url-ideas', requireAuth, requireUploadPermission, async (re
          description,
          color,
          is_this_week,
-         idea_url
-       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         idea_url,
+         hub_site
+       ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING id`,
       [
         String(name).trim(),
@@ -1179,6 +1234,7 @@ app.post('/api/admin/url-ideas', requireAuth, requireUploadPermission, async (re
         safeColor,
         false,
         safeUrl,
+        HUB_SITE_KEY,
       ]
     );
 

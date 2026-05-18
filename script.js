@@ -45,6 +45,16 @@ function buildCard(a) {
     </a>`;
 }
 
+function isRenderableActivity(a) {
+  if (!a || typeof a !== 'object') return false;
+  if (!String(a.name || '').trim()) return false;
+  if (!String(a.year_level || '').trim()) return false;
+  if (!String(a.type || '').trim()) return false;
+  if (!String(a.difficulty || '').trim()) return false;
+  const hrs = Number(a.duration_hours);
+  return Number.isFinite(hrs) && hrs > 0;
+}
+
 function normalizeHttpUrl(url) {
   const value = String(url || '').trim();
   if (!value) return '';
@@ -104,8 +114,9 @@ async function loadThisWeek() {
     const res  = await fetch('/api/activities?week=true');
     if (!res.ok) throw new Error(res.statusText);
     const data = await res.json();
-    grid.innerHTML = data.length
-      ? data.map(buildCard).join('')
+    const renderable = data.filter(isRenderableActivity);
+    grid.innerHTML = renderable.length
+      ? renderable.map(buildCard).join('')
       : '<p style="color:#666;font-size:0.85rem">No activities scheduled this week.</p>';
   } catch {
     showGridError(grid, 'Could not load this week\'s activities.');
@@ -139,6 +150,8 @@ async function loadLibrary() {
     const res  = await fetch('/api/activities?' + params.toString());
     if (!res.ok) throw new Error(res.statusText);
     let data = await res.json();
+
+    data = data.filter(isRenderableActivity);
 
     // Client-side text search (fast, no extra round-trip)
     const q = searchInput?.value.trim().toLowerCase();

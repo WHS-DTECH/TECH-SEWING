@@ -1,7 +1,4 @@
--- Run this once against your Render PostgreSQL database to create the tables.
--- In Render: open your PostgreSQL instance and run this script.
 
--- Activities ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS activities (
   id             SERIAL PRIMARY KEY,
   name           VARCHAR(255)  NOT NULL,
@@ -21,10 +18,14 @@ CREATE TABLE IF NOT EXISTS activities (
   class_management_notes TEXT,
   class_preparation TEXT,
   assessment_focus TEXT,
+  hub            VARCHAR(30)   NOT NULL DEFAULT 'SEWING',
   color          VARCHAR(30)   NOT NULL DEFAULT 'color-rose',
   is_this_week   BOOLEAN       NOT NULL DEFAULT FALSE,
   created_at     TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_activities_hub_site
+  ON activities (hub_site);
 
 -- Suggestions ─────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS suggestions (
