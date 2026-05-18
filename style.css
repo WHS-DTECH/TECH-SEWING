@@ -373,6 +373,16 @@ a { text-decoration: none; color: inherit; }
 .card-body h4 { font-size: 0.9rem; font-weight: 700; color: #1e1e2e; }
 .card-body p  { font-size: 0.78rem; color: #5a5a72; line-height: 1.5; }
 
+.card-footer-url {
+  border-top: 1px solid #e6d7f1;
+  padding: 0.55rem 0.9rem 0.7rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #6b2d8b;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
 .teacher-extra {
   margin-top: 0.35rem;
   border: 1px solid #d8e3ef;
@@ -656,6 +666,24 @@ a { text-decoration: none; color: inherit; }
   font-size: 0.84rem;
   line-height: 1.55;
   margin-top: 0.6rem;
+}
+
+.detail-url-link {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.75rem;
+  margin-right: 0.65rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.18);
+  border: 1px solid rgba(255,255,255,0.42);
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.detail-url-link:hover {
+  background: rgba(255,255,255,0.26);
 }
 
 .detail-image {

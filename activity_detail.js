@@ -81,6 +81,13 @@ function defaultImage(name) {
   return `https://placehold.co/900x560/e8eef4/23496f?text=${label}`;
 }
 
+function normalizeHttpUrl(url) {
+  const value = String(url || '').trim();
+  if (!value) return '';
+  if (!/^https?:\/\//i.test(value)) return '';
+  return value;
+}
+
 async function loadActivity() {
   if (!mount) return;
 
@@ -102,12 +109,14 @@ async function loadActivity() {
     const hrs = Number(a.duration_hours);
     const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
     const fallbackImage = defaultImage(a.name);
+    const ideaUrl = normalizeHttpUrl(a.idea_url);
+    const isUrlIdea = String(a.activity_category || '').toLowerCase() === 'url idea';
 
     mount.innerHTML = `
       ${teacherToolbarMarkup(a)}
       <section class="detail-hero">
         <div class="detail-hero-content">
-          <p class="detail-sub">STUDENT SEWING ACTIVITY</p>
+          <p class="detail-sub">${isUrlIdea ? 'URL IDEA' : 'STUDENT SEWING ACTIVITY'}</p>
           <h1>${escHtml(a.name)}</h1>
           <div class="detail-meta">
             <span class="detail-chip">${escHtml(a.year_level)}</span>
@@ -116,6 +125,7 @@ async function loadActivity() {
             <span class="detail-chip teacher-only">${escHtml(a.difficulty)}</span>
           </div>
           <p class="detail-desc">${escHtml(a.description || 'Practical sewing task for students.')}</p>
+          ${ideaUrl ? `<a class="detail-url-link" href="${escHtml(ideaUrl)}" target="_blank" rel="noopener noreferrer">Open URL Idea</a>` : ''}
           <a class="detail-back" href="/index.html">&#8592; Back to activity library</a>
         </div>
         <div class="detail-image">

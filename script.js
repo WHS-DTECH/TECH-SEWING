@@ -5,6 +5,7 @@ function buildCard(a) {
     Intermediate: 'tag-intermediate',
     Advanced:     'tag-advanced',
   }[a.difficulty] || '';
+  const isUrlIdea = String(a.activity_category || '').toLowerCase() === 'url idea';
 
   const hrs = Number(a.duration_hours);
   const durationLabel = hrs === 1 ? '1 hr' : `${hrs} hrs`;
@@ -22,7 +23,7 @@ function buildCard(a) {
         <div class="card-circles"><div class="cc cc1"></div><div class="cc cc2"></div></div>
         <div class="card-header-text">
           <h3>${escHtml(a.name)}</h3>
-          <p>Sewing Room Activity</p>
+          <p>${isUrlIdea ? 'URL Idea' : 'Sewing Room Activity'}</p>
         </div>
       </div>
       ${a.outcome_image_url ? `<div class="card-outcome-image"><img src="${escHtml(a.outcome_image_url)}" alt="${escHtml(a.name)} outcome" loading="lazy" onerror="this.onerror=null;this.src='${escHtml(fallbackImage)}'" /></div>` : ''}
@@ -40,6 +41,7 @@ function buildCard(a) {
         ${ideaUrl ? `<p><a href="${escHtml(ideaUrl)}" target="_blank" rel="noopener noreferrer">Open URL Idea</a></p>` : ''}
         ${teacherExtra}
       </div>
+      ${isUrlIdea ? '<div class="card-footer-url">URL Idea</div>' : ''}
     </a>`;
 }
 
