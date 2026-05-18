@@ -639,6 +639,57 @@ app.put('/api/admin/role-permissions', requireAuth, requireAdmin, async (req, re
   }
 });
 
+app.post('/api/admin/role-permissions/cleanup-duplicates', requireAuth, requireAdmin, async (_req, res) => {
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const beforeRes = await client.query(
+      `SELECT COUNT(*)::INT AS total_rows
+       FROM role_permissions
+       WHERE role_name IS NOT NULL`
+    );
+
+    const deletedRes = await client.query(
+      `WITH ranked AS (
+         SELECT
+           ctid,
+           ROW_NUMBER() OVER (
+             PARTITION BY LOWER(BTRIM(role_name))
+             ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST, ctid DESC
+           ) AS rn
+         FROM role_permissions
+         WHERE role_name IS NOT NULL
+       )
+       DELETE FROM role_permissions rp
+       USING ranked r
+       WHERE rp.ctid = r.ctid
+         AND r.rn > 1`
+    );
+
+    const afterRes = await client.query(
+      `SELECT COUNT(*)::INT AS total_rows
+       FROM role_permissions
+       WHERE role_name IS NOT NULL`
+    );
+
+    await client.query('COMMIT');
+
+    res.json({
+      success: true,
+      before: beforeRes.rows[0]?.total_rows || 0,
+      deleted: deletedRes.rowCount || 0,
+      after: afterRes.rows[0]?.total_rows || 0,
+    });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('POST /api/admin/role-permissions/cleanup-duplicates error:', err.message);
+    res.status(500).json({ error: 'Database error' });
+  } finally {
+    client.release();
+  }
+});
+
 // Protect admin API endpoint
 app.get('/api/suggestions', requireAuth, requireAdmin, async (req, res) => {
   try {
