@@ -36,13 +36,32 @@ async function loadPermissions() {
     if (!res.ok) throw new Error('Failed to load permissions');
 
     const roles = await res.json();
-    if (!roles.length) {
+    const uniqueByRole = new Map();
+    for (const role of roles) {
+      const key = String(role?.role_name || '').trim().toLowerCase();
+      if (!key || uniqueByRole.has(key)) continue;
+      uniqueByRole.set(key, role);
+    }
+
+    const roleOrder = ['admin', 'lead teacher', 'teacher', 'technician', 'staff', 'student', 'public access'];
+    const normalizedRoles = Array.from(uniqueByRole.values()).sort((a, b) => {
+      const aRole = String(a.role_name || '').trim().toLowerCase();
+      const bRole = String(b.role_name || '').trim().toLowerCase();
+      const aIdx = roleOrder.indexOf(aRole);
+      const bIdx = roleOrder.indexOf(bRole);
+      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+      if (aIdx !== -1) return -1;
+      if (bIdx !== -1) return 1;
+      return aRole.localeCompare(bRole);
+    });
+
+    if (!normalizedRoles.length) {
       tbody.innerHTML = '<tr><td colspan="6">No permission rows found.</td></tr>';
       return;
     }
 
-    defaults = roles.map((r) => ({ ...r }));
-    tbody.innerHTML = roles.map(rowTemplate).join('');
+    defaults = normalizedRoles.map((r) => ({ ...r }));
+    tbody.innerHTML = normalizedRoles.map(rowTemplate).join('');
   } catch (_err) {
     tbody.innerHTML = '<tr><td colspan="6">Could not load permissions.</td></tr>';
   }

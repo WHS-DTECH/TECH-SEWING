@@ -510,7 +510,32 @@ a { text-decoration: none; color: inherit; }
 
 /* ─── Responsive ────────────────────────────────────────── */
 @media (max-width: 700px) {
-  .nav-links { display: none; }
+  .navbar {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    padding: 0.35rem 0.75rem 0.5rem;
+    row-gap: 0.35rem;
+  }
+  .nav-links {
+    display: flex;
+    order: 3;
+    width: 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: 0.1rem;
+  }
+  .nav-links::-webkit-scrollbar {
+    height: 5px;
+  }
+  .nav-links::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.25);
+    border-radius: 999px;
+  }
+  .nav-right {
+    margin-left: auto;
+  }
   .hero { padding: 2.5rem 1.25rem; }
   .section-week .container,
   .section-library .container { padding: 1.25rem 1rem 1.5rem; margin-top: 1rem; }

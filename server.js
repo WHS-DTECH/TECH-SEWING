@@ -302,6 +302,12 @@ async function userCanUploadActivity(user) {
   return hasRolePermission(user.dbUserId, 'add_recipes');
 }
 
+async function userCanBrowseActivities(user) {
+  if (!user || !user.dbUserId) return false;
+  if (user.isAdmin) return true;
+  return hasRolePermission(user.dbUserId, 'inventory');
+}
+
 async function userCanViewTeacherCard(user) {
   if (!user || !user.dbUserId) return false;
   if (user.isAdmin) return true;
@@ -396,9 +402,11 @@ app.get('/api/me', async (req, res) => {
   }
 
   let canUploadActivity = false;
+  let canBrowseActivities = false;
   let canViewTeacherCard = false;
   try {
     canUploadActivity = await userCanUploadActivity(req.user);
+    canBrowseActivities = await userCanBrowseActivities(req.user);
     canViewTeacherCard = await userCanViewTeacherCard(req.user);
   } catch (err) {
     console.error('GET /api/me permission check error:', err.message);
@@ -412,6 +420,7 @@ app.get('/api/me', async (req, res) => {
       initials: req.user.initials,
       isAdmin: !!req.user.isAdmin,
       canUploadActivity: !!canUploadActivity,
+      canBrowseActivities: !!canBrowseActivities,
       canViewTeacherCard: !!canViewTeacherCard,
     },
   });
@@ -527,13 +536,41 @@ app.delete('/api/admin/user-roles', requireAuth, requireAdmin, async (req, res) 
 app.get('/api/admin/role-permissions', requireAuth, requireAdmin, async (_req, res) => {
   try {
     const result = await pool.query(
-      `SELECT role_name, recipes, add_recipes, inventory, planning, admin
+      `SELECT DISTINCT ON (LOWER(role_name))
+          role_name,
+          recipes,
+          add_recipes,
+          inventory,
+          planning,
+          admin
        FROM role_permissions
        WHERE role_name IS NOT NULL
-       ORDER BY role_name ASC`
+       ORDER BY LOWER(role_name), updated_at DESC NULLS LAST, created_at DESC NULLS LAST`
     );
 
-    res.json(result.rows);
+    const roleOrder = [
+      'admin',
+      'lead teacher',
+      'teacher',
+      'technician',
+      'staff',
+      'student',
+      'public access',
+    ];
+
+    const sorted = [...result.rows].sort((a, b) => {
+      const aRole = String(a.role_name || '').trim().toLowerCase();
+      const bRole = String(b.role_name || '').trim().toLowerCase();
+      const aIdx = roleOrder.indexOf(aRole);
+      const bIdx = roleOrder.indexOf(bRole);
+
+      if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx;
+      if (aIdx !== -1) return -1;
+      if (bIdx !== -1) return 1;
+      return aRole.localeCompare(bRole);
+    });
+
+    res.json(sorted);
   } catch (err) {
     console.error('GET /api/admin/role-permissions error:', err.message);
     res.status(500).json({ error: 'Database error' });
