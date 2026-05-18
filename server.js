@@ -142,6 +142,22 @@ async function ensureSchema() {
     ADD COLUMN IF NOT EXISTS assessment_focus TEXT
   `);
 
+  // Normalize legacy or inconsistent category values before adding the CHECK constraint.
+  await pool.query(`
+    UPDATE activities
+    SET activity_category = CASE
+      WHEN activity_category IS NULL OR BTRIM(activity_category) = '' THEN 'Practice'
+      WHEN LOWER(BTRIM(activity_category)) = 'practice' THEN 'Practice'
+      WHEN LOWER(BTRIM(activity_category)) = 'assessment' THEN 'Assessment'
+      WHEN LOWER(BTRIM(activity_category)) = 'skill' THEN 'Skill'
+      ELSE 'Practice'
+    END
+    WHERE activity_category IS NULL
+       OR BTRIM(activity_category) = ''
+       OR LOWER(BTRIM(activity_category)) NOT IN ('practice', 'assessment', 'skill')
+       OR activity_category NOT IN ('Practice', 'Assessment', 'Skill')
+  `);
+
   await pool.query(`
     ALTER TABLE activities DROP CONSTRAINT IF EXISTS activities_activity_category_check
   `);
@@ -150,12 +166,6 @@ async function ensureSchema() {
     ALTER TABLE activities
     ADD CONSTRAINT activities_activity_category_check
     CHECK (activity_category IN ('Practice','Assessment','Skill'))
-  `);
-
-  await pool.query(`
-    UPDATE activities
-    SET activity_category = 'Practice'
-    WHERE activity_category IS NULL
   `);
 }
 
