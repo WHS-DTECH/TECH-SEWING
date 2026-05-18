@@ -167,6 +167,44 @@ async function ensureSchema() {
      WHERE hub_site IS NULL OR BTRIM(hub_site) = ''`
   );
 
+  const legacyHubColumnResult = await pool.query(`
+    SELECT EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = 'public'
+        AND table_name = 'activities'
+        AND column_name = 'hub'
+    ) AS has_legacy_hub
+  `);
+
+  const hasLegacyHubColumn = !!legacyHubColumnResult.rows[0]?.has_legacy_hub;
+
+  if (hasLegacyHubColumn) {
+    await pool.query(`
+      UPDATE activities
+      SET hub_site = CASE
+        WHEN UPPER(BTRIM(COALESCE(hub, ''))) IN ('SEWING', 'TECH-SEWING', 'TECH_SEWING') THEN 'TECH-SEWING'
+        WHEN UPPER(BTRIM(COALESCE(hub, ''))) IN ('DTECH', 'DTECH-HUB', 'WHS-DTECH', 'TECHSPACE') THEN 'DTECH-HUB'
+        ELSE hub_site
+      END
+      WHERE hub_site = 'UNSCOPED'
+    `);
+  }
+
+  await pool.query(`
+    UPDATE activities
+    SET hub_site = 'TECH-SEWING'
+    WHERE hub_site = 'UNSCOPED'
+      AND year_level ~* '^Year\\s*[0-9]+'
+  `);
+
+  await pool.query(`
+    UPDATE activities
+    SET hub_site = 'DTECH-HUB'
+    WHERE hub_site = 'UNSCOPED'
+      AND LOWER(BTRIM(COALESCE(year_level, ''))) IN ('junior', 'senior')
+  `);
+
   await pool.query(`
     ALTER TABLE activities
     ALTER COLUMN hub_site SET DEFAULT 'UNSCOPED'
