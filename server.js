@@ -1,14 +1,15 @@
 require('dotenv').config();
 
-const express = require('express');
-const { Pool }  = require('pg');
-const path      = require('path');
-const fs        = require('fs');
-const crypto    = require('crypto');
-const session   = require('express-session');
-const PgSession = require('connect-pg-simple')(session);
-const passport  = require('passport');
-const multer    = require('multer');
+const express    = require('express');
+const { Pool }   = require('pg');
+const path       = require('path');
+const fs         = require('fs');
+const crypto     = require('crypto');
+const session    = require('express-session');
+const PgSession  = require('connect-pg-simple')(session);
+const passport   = require('passport');
+const multer     = require('multer');
+const nodemailer = require('nodemailer');
 const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
 const { v2: cloudinary } = require('cloudinary');
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
@@ -71,6 +72,64 @@ const NZQA_MPT_LEVEL1_STANDARDS = [
     nzqa_search_url: 'https://www.nzqa.govt.nz/ncea/assessment/search.do?query=Materials+and+Processing+Technology&view=achievements&level=01',
   },
 ];
+
+// ── SMTP / email ─────────────────────────────────────────
+const SMTP_HOST                 = (process.env.SMTP_HOST || '').trim();
+const SMTP_PORT                 = parseInt(process.env.SMTP_PORT || '465', 10);
+const SMTP_SECURE               = process.env.SMTP_SECURE === '1' || process.env.SMTP_SECURE === 'true';
+const SMTP_USER                 = (process.env.SMTP_USER || '').trim();
+const SMTP_PASS                 = (process.env.SMTP_PASS || '').trim();
+const SMTP_FROM                 = (process.env.SMTP_FROM || '').trim();
+const SMTP_CONNECTION_TIMEOUT   = parseInt(process.env.SMTP_CONNECTION_TIMEOUT_MS || '8000', 10);
+const SMTP_GREETING_TIMEOUT     = parseInt(process.env.SMTP_GREETING_TIMEOUT_MS  || '8000', 10);
+const SMTP_SOCKET_TIMEOUT       = parseInt(process.env.SMTP_SOCKET_TIMEOUT_MS    || '12000', 10);
+
+const smtpEnabled = !!(SMTP_HOST && SMTP_USER && SMTP_PASS && SMTP_FROM);
+
+function createMailTransporter() {
+  return nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_SECURE,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: SMTP_CONNECTION_TIMEOUT,
+    greetingTimeout:   SMTP_GREETING_TIMEOUT,
+    socketTimeout:     SMTP_SOCKET_TIMEOUT,
+  });
+}
+
+function escHtmlEmail(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function buildSuggestionEmailHtml(vars) {
+  const templatePath = path.join(__dirname, 'email_template.html');
+  const html = fs.readFileSync(templatePath, 'utf8');
+  const safe = Object.fromEntries(
+    Object.entries(vars).map(([k, v]) => [k, escHtmlEmail(v)])
+  );
+  return html.replace(/\{\{(\w+)\}\}/g, (_, key) => safe[key] ?? '');
+}
+
+async function sendSuggestionEmail(vars) {
+  if (!smtpEnabled) {
+    console.log('[smtp] not configured — skipping suggestion email');
+    return;
+  }
+  const transporter = createMailTransporter();
+  const html = buildSuggestionEmailHtml(vars);
+  await transporter.sendMail({
+    from:    SMTP_FROM,
+    to:      SMTP_FROM,
+    replyTo: vars.sender_email,
+    subject: `[Activity Suggestion] ${vars.activity_name}`,
+    html,
+  });
+}
 
 // ── Database connection ──────────────────────────────────
 const pool = new Pool({
@@ -310,175 +369,187 @@ const imageUpload = multer({
 });
 
 async function ensureSchema() {
-  await pool.query(`
-    ALTER TABLE activities
-    ADD COLUMN IF NOT EXISTS outcome_image_url TEXT,
-    ADD COLUMN IF NOT EXISTS resources TEXT,
-    ADD COLUMN IF NOT EXISTS equipment TEXT,
-    ADD COLUMN IF NOT EXISTS instructions TEXT,
-    ADD COLUMN IF NOT EXISTS idea_url TEXT,
-    ADD COLUMN IF NOT EXISTS activity_category VARCHAR(20) DEFAULT 'Practice',
-    ADD COLUMN IF NOT EXISTS class_management_notes TEXT,
-    ADD COLUMN IF NOT EXISTS class_preparation TEXT,
-    ADD COLUMN IF NOT EXISTS assessment_focus TEXT,
-    ADD COLUMN IF NOT EXISTS hub_site VARCHAR(100)
-  `);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
 
-  await pool.query(
-    `UPDATE activities
-     SET hub_site = 'UNSCOPED'
-     WHERE hub_site IS NULL OR BTRIM(hub_site) = ''`
-  );
-
-  const legacyHubColumnResult = await pool.query(`
-    SELECT EXISTS (
-      SELECT 1
-      FROM information_schema.columns
-      WHERE table_schema = 'public'
-        AND table_name = 'activities'
-        AND column_name = 'hub'
-    ) AS has_legacy_hub
-  `);
-
-  const hasLegacyHubColumn = !!legacyHubColumnResult.rows[0]?.has_legacy_hub;
-
-  if (hasLegacyHubColumn) {
-    await pool.query(`
-      UPDATE activities
-      SET hub_site = CASE
-        WHEN UPPER(BTRIM(COALESCE(hub, ''))) IN ('SEWING', 'TECH-SEWING', 'TECH_SEWING') THEN 'TECH-SEWING'
-        WHEN UPPER(BTRIM(COALESCE(hub, ''))) IN ('DTECH', 'DTECH-HUB', 'WHS-DTECH', 'TECHSPACE') THEN 'DTECH-HUB'
-        ELSE hub_site
-      END
-      WHERE hub_site = 'UNSCOPED'
+    await client.query(`
+      ALTER TABLE activities
+      ADD COLUMN IF NOT EXISTS outcome_image_url TEXT,
+      ADD COLUMN IF NOT EXISTS resources TEXT,
+      ADD COLUMN IF NOT EXISTS equipment TEXT,
+      ADD COLUMN IF NOT EXISTS instructions TEXT,
+      ADD COLUMN IF NOT EXISTS idea_url TEXT,
+      ADD COLUMN IF NOT EXISTS activity_category VARCHAR(20) DEFAULT 'Practice',
+      ADD COLUMN IF NOT EXISTS class_management_notes TEXT,
+      ADD COLUMN IF NOT EXISTS class_preparation TEXT,
+      ADD COLUMN IF NOT EXISTS assessment_focus TEXT,
+      ADD COLUMN IF NOT EXISTS hub_site VARCHAR(100)
     `);
-  }
 
-  await pool.query(`
-    UPDATE activities
-    SET hub_site = 'TECH-SEWING'
-    WHERE hub_site = 'UNSCOPED'
-      AND year_level ~* '^Year\\s*[0-9]+'
-  `);
+    await client.query(
+      `UPDATE activities
+       SET hub_site = 'UNSCOPED'
+       WHERE hub_site IS NULL OR BTRIM(hub_site) = ''`
+    );
 
-  await pool.query(`
-    UPDATE activities
-    SET hub_site = 'DTECH-HUB'
-    WHERE hub_site = 'UNSCOPED'
-      AND LOWER(BTRIM(COALESCE(year_level, ''))) IN ('junior', 'senior')
-  `);
+    const legacyHubColumnResult = await client.query(`
+      SELECT EXISTS (
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'activities'
+          AND column_name = 'hub'
+      ) AS has_legacy_hub
+    `);
 
-  await pool.query(`
-    UPDATE activities
-    SET hub_site = 'DTECH-HUB'
-    WHERE hub_site = 'TECH-SEWING'
-      AND (
-        LOWER(COALESCE(type, '')) IN (
-          'office suite',
-          'infrastructure & networking',
-          'digital media',
-          'web development',
-          'software development',
-          'cybersecurity',
-          'database systems'
+    const hasLegacyHubColumn = !!legacyHubColumnResult.rows[0]?.has_legacy_hub;
+
+    if (hasLegacyHubColumn) {
+      await client.query(`
+        UPDATE activities
+        SET hub_site = CASE
+          WHEN UPPER(BTRIM(COALESCE(hub, ''))) IN ('SEWING', 'TECH-SEWING', 'TECH_SEWING') THEN 'TECH-SEWING'
+          WHEN UPPER(BTRIM(COALESCE(hub, ''))) IN ('DTECH', 'DTECH-HUB', 'WHS-DTECH', 'TECHSPACE') THEN 'DTECH-HUB'
+          ELSE hub_site
+        END
+        WHERE hub_site = 'UNSCOPED'
+      `);
+    }
+
+    await client.query(`
+      UPDATE activities
+      SET hub_site = 'TECH-SEWING'
+      WHERE hub_site = 'UNSCOPED'
+        AND year_level ~* '^Year\\s*[0-9]+'
+    `);
+
+    await client.query(`
+      UPDATE activities
+      SET hub_site = 'DTECH-HUB'
+      WHERE hub_site = 'UNSCOPED'
+        AND LOWER(BTRIM(COALESCE(year_level, ''))) IN ('junior', 'senior')
+    `);
+
+    await client.query(`
+      UPDATE activities
+      SET hub_site = 'DTECH-HUB'
+      WHERE hub_site = 'TECH-SEWING'
+        AND (
+          LOWER(COALESCE(type, '')) IN (
+            'office suite',
+            'infrastructure & networking',
+            'digital media',
+            'web development',
+            'software development',
+            'cybersecurity',
+            'database systems'
+          )
+          OR LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) ~ '(app|chromebook|controller|pipeline|network|cyber|software|coding|programming|database|robot|iot)'
         )
-        OR LOWER(COALESCE(type, '') || ' ' || COALESCE(name, '')) ~ '(app|chromebook|controller|pipeline|network|cyber|software|coding|programming|database|robot|iot)'
+    `);
+
+    await client.query(`
+      ALTER TABLE activities
+      ALTER COLUMN hub_site SET DEFAULT 'UNSCOPED'
+    `);
+
+    await client.query(`
+      ALTER TABLE activities
+      ALTER COLUMN hub_site SET NOT NULL
+    `);
+
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_activities_hub_site
+      ON activities (hub_site)
+    `);
+
+    // Normalize legacy or inconsistent category values before adding the CHECK constraint.
+    await client.query(`
+      UPDATE activities
+      SET activity_category = CASE
+        WHEN activity_category IS NULL OR BTRIM(activity_category) = '' THEN 'Practice'
+        WHEN LOWER(BTRIM(activity_category)) = 'practice' THEN 'Practice'
+        WHEN LOWER(BTRIM(activity_category)) = 'assessment' THEN 'Assessment'
+        WHEN LOWER(BTRIM(activity_category)) = 'skill' THEN 'Skill'
+        WHEN LOWER(BTRIM(activity_category)) IN ('url idea', 'url_idea', 'url-idea', 'urlidea') THEN 'URL Idea'
+        ELSE 'Practice'
+      END
+      WHERE activity_category IS NULL
+         OR BTRIM(activity_category) = ''
+         OR LOWER(BTRIM(activity_category)) NOT IN ('practice', 'assessment', 'skill', 'url idea', 'url_idea', 'url-idea', 'urlidea')
+         OR activity_category NOT IN ('Practice', 'Assessment', 'Skill', 'URL Idea')
+    `);
+
+    await client.query(`
+      ALTER TABLE activities DROP CONSTRAINT IF EXISTS activities_activity_category_check
+    `);
+
+    await client.query(`
+      ALTER TABLE activities
+      ADD CONSTRAINT activities_activity_category_check
+      CHECK (activity_category IN ('Practice','Assessment','Skill','URL Idea'))
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        google_id TEXT UNIQUE,
+        email VARCHAR(255) NOT NULL UNIQUE,
+        name VARCHAR(255) NOT NULL,
+        picture TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       )
-  `);
+    `);
 
-  await pool.query(`
-    ALTER TABLE activities
-    ALTER COLUMN hub_site SET DEFAULT 'UNSCOPED'
-  `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_roles (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role VARCHAR(100) NOT NULL,
+        user_type VARCHAR(100),
+        assigned_by VARCHAR(255),
+        assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
 
-  await pool.query(`
-    ALTER TABLE activities
-    ALTER COLUMN hub_site SET NOT NULL
-  `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS role_permissions (
+        id SERIAL PRIMARY KEY,
+        role_name VARCHAR(100) NOT NULL UNIQUE,
+        recipes BOOLEAN NOT NULL DEFAULT FALSE,
+        add_recipes BOOLEAN NOT NULL DEFAULT FALSE,
+        inventory BOOLEAN NOT NULL DEFAULT FALSE,
+        planning BOOLEAN NOT NULL DEFAULT FALSE,
+        admin BOOLEAN NOT NULL DEFAULT FALSE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      )
+    `);
 
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_activities_hub_site
-    ON activities (hub_site)
-  `);
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_sessions (
+        sid VARCHAR PRIMARY KEY,
+        sess JSON NOT NULL,
+        expire TIMESTAMPTZ NOT NULL
+      )
+    `);
 
-  // Normalize legacy or inconsistent category values before adding the CHECK constraint.
-  await pool.query(`
-    UPDATE activities
-    SET activity_category = CASE
-      WHEN activity_category IS NULL OR BTRIM(activity_category) = '' THEN 'Practice'
-      WHEN LOWER(BTRIM(activity_category)) = 'practice' THEN 'Practice'
-      WHEN LOWER(BTRIM(activity_category)) = 'assessment' THEN 'Assessment'
-      WHEN LOWER(BTRIM(activity_category)) = 'skill' THEN 'Skill'
-      WHEN LOWER(BTRIM(activity_category)) IN ('url idea', 'url_idea', 'url-idea', 'urlidea') THEN 'URL Idea'
-      ELSE 'Practice'
-    END
-    WHERE activity_category IS NULL
-       OR BTRIM(activity_category) = ''
-       OR LOWER(BTRIM(activity_category)) NOT IN ('practice', 'assessment', 'skill', 'url idea', 'url_idea', 'url-idea', 'urlidea')
-       OR activity_category NOT IN ('Practice', 'Assessment', 'Skill', 'URL Idea')
-  `);
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_user_sessions_expire
+      ON user_sessions (expire)
+    `);
 
-  await pool.query(`
-    ALTER TABLE activities DROP CONSTRAINT IF EXISTS activities_activity_category_check
-  `);
-
-  await pool.query(`
-    ALTER TABLE activities
-    ADD CONSTRAINT activities_activity_category_check
-    CHECK (activity_category IN ('Practice','Assessment','Skill','URL Idea'))
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS users (
-      id SERIAL PRIMARY KEY,
-      google_id TEXT UNIQUE,
-      email VARCHAR(255) NOT NULL UNIQUE,
-      name VARCHAR(255) NOT NULL,
-      picture TEXT,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_roles (
-      id SERIAL PRIMARY KEY,
-      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      role VARCHAR(100) NOT NULL,
-      user_type VARCHAR(100),
-      assigned_by VARCHAR(255),
-      assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS role_permissions (
-      id SERIAL PRIMARY KEY,
-      role_name VARCHAR(100) NOT NULL UNIQUE,
-      recipes BOOLEAN NOT NULL DEFAULT FALSE,
-      add_recipes BOOLEAN NOT NULL DEFAULT FALSE,
-      inventory BOOLEAN NOT NULL DEFAULT FALSE,
-      planning BOOLEAN NOT NULL DEFAULT FALSE,
-      admin BOOLEAN NOT NULL DEFAULT FALSE,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `);
-
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS user_sessions (
-      sid VARCHAR PRIMARY KEY,
-      sess JSON NOT NULL,
-      expire TIMESTAMPTZ NOT NULL
-    )
-  `);
-
-  await pool.query(`
-    CREATE INDEX IF NOT EXISTS idx_user_sessions_expire
-    ON user_sessions (expire)
-  `);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 // ── Middleware ───────────────────────────────────────────
@@ -496,7 +567,9 @@ app.use(
   session({
     store: sessionStore,
     name: 'sewing.sid',
-    secret: process.env.SESSION_SECRET || 'dev-only-secret-change-me',
+    secret: process.env.SESSION_SECRET || (process.env.NODE_ENV === 'production'
+      ? (() => { throw new Error('SESSION_SECRET environment variable must be set in production'); })()
+      : 'dev-only-secret-change-me'),
     resave: false,
     saveUninitialized: false,
     rolling: true,
@@ -1738,6 +1811,21 @@ app.post('/api/suggestions', async (req, res) => {
         reason.trim(),
       ]
     );
+
+    const siteBase = `${req.protocol}://${req.get('host')}`;
+
+    // Fire-and-forget notification email — DB record is already saved.
+    sendSuggestionEmail({
+      date:            submittedDate,
+      activity_name:   activity_name.trim(),
+      suggested_by:    suggested_by ? suggested_by.trim() : 'Not provided',
+      sender_email:    email.trim().toLowerCase(),
+      activity_url:    url ? url.trim() : 'N/A',
+      reason:          reason.trim(),
+      suggestions_url: siteBase,
+    }).catch((emailErr) => {
+      console.error('Suggestion email error (non-fatal):', emailErr.message);
+    });
 
     res.json({ success: true, id: result.rows[0].id });
   } catch (err) {

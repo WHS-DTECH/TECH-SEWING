@@ -153,7 +153,7 @@ async function loadThisWeek() {
   const grid = document.getElementById('week-grid');
   if (!grid) return;
   try {
-    const res  = await fetch('/api/activities?week=true');
+    const res  = await fetch('/api/activities?week=true', { credentials: 'include' });
     if (!res.ok) throw new Error(res.statusText);
     const data = await res.json();
     const renderable = data.filter(isRenderableActivity);
@@ -191,7 +191,7 @@ async function loadLibrary() {
     if (category) params.set('category', category);
     params.set('sort', sort);
 
-    const res  = await fetch('/api/activities?' + params.toString());
+    const res  = await fetch('/api/activities?' + params.toString(), { credentials: 'include' });
     if (!res.ok) throw new Error(res.statusText);
     let data = await res.json();
 

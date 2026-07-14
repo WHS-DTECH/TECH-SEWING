@@ -1,16 +1,3 @@
-// ── EmailJS configuration ────────────────────────────────
-// 1. Create a free account at https://www.emailjs.com
-// 2. Add an Email Service (Gmail recommended) — note your Service ID
-// 3. Create an Email Template, paste in the HTML from email_template.html,
-//    then note your Template ID
-// 4. Copy your Public Key from Account → API Keys
-// Replace the three placeholder strings below with your own values:
-const EMAILJS_PUBLIC_KEY  = 'YOUR_PUBLIC_KEY';
-const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
-
-emailjs.init({ publicKey: EMAILJS_PUBLIC_KEY });
-
 // ── DOM refs ─────────────────────────────────────────────
 const form       = document.getElementById('suggest-form');
 const statusBar  = document.getElementById('status-bar');
@@ -128,22 +115,6 @@ form.addEventListener('submit', async e => {
     console.error('API save error:', err);
     setStatus('Sorry, something went wrong saving your suggestion. Please try again.', 'error');
     return;
-  }
-
-  // ── Step 2: Send notification email via EmailJS ───────────
-  // (runs in the background — DB record is already saved above)
-  if (savedOk && EMAILJS_PUBLIC_KEY !== 'YOUR_PUBLIC_KEY') {
-    const templateParams = {
-      date:            today,
-      activity_name:   activityVal,
-      suggested_by:    nameVal  || 'Not provided',
-      sender_email:    emailVal,
-      activity_url:    urlVal   || 'N/A',
-      reason:          reasonVal,
-      suggestions_url: window.location.href,
-    };
-    emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, templateParams)
-      .catch(err => console.warn('EmailJS notification skipped:', err));
   }
 
   setStatus(

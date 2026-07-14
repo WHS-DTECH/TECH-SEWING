@@ -140,7 +140,7 @@ async function loadActivity() {
   }
 
   try {
-    const res = await fetch(`/api/activities/${id}`);
+    const res = await fetch(`/api/activities/${id}`, { credentials: 'include' });
     if (!res.ok) throw new Error('Activity not found');
     const a = await res.json();
 
