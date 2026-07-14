@@ -156,5 +156,23 @@
 
   <script src="auth-client.js"></script>
   <script src="script.js"></script>
+  <script>
+    (function () {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('auth') === 'failed') {
+        const banner = document.createElement('div');
+        banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#b63a3a;color:#fff;text-align:center;padding:0.75rem 1rem;font-size:0.9rem;font-family:inherit';
+        banner.textContent = 'Sign-in failed. Your account may not be authorised for this site. Please try again or contact your administrator.';
+        const close = document.createElement('button');
+        close.textContent = '\u00d7';
+        close.style.cssText = 'margin-left:1rem;background:none;border:none;color:#fff;font-size:1.1rem;cursor:pointer;line-height:1';
+        close.setAttribute('aria-label', 'Dismiss');
+        close.addEventListener('click', () => banner.remove());
+        banner.appendChild(close);
+        document.body.prepend(banner);
+        history.replaceState(null, '', window.location.pathname);
+      }
+    })();
+  </script>
 </body>
 </html>

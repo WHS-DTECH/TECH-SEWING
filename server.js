@@ -585,8 +585,49 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
-passport.serializeUser((user, done) => done(null, user));
-passport.deserializeUser((user, done) => done(null, user));
+// Serialize only the DB user ID so the session stays small and permissions
+// are always re-fetched from the database on each request.
+passport.serializeUser((user, done) => done(null, user.dbUserId));
+
+passport.deserializeUser(async (dbUserId, done) => {
+  try {
+    const userRow = await pool.query(
+      'SELECT id, google_id, email, name FROM users WHERE id = $1 LIMIT 1',
+      [dbUserId]
+    );
+    if (!userRow.rows.length) return done(null, false);
+
+    const u = userRow.rows[0];
+    const email = u.email;
+
+    const adminCheck = await pool.query(
+      `SELECT EXISTS (
+         SELECT 1 FROM user_roles ur
+         WHERE ur.user_id = $1 AND LOWER(ur.role) = 'admin'
+       ) AS is_admin_role`,
+      [dbUserId]
+    );
+    const isAdmin = ADMIN_EMAILS.includes(email) || adminCheck.rows[0].is_admin_role;
+
+    const initials = (u.name || email)
+      .split(' ')
+      .map((p) => p[0])
+      .join('')
+      .slice(0, 2)
+      .toUpperCase();
+
+    return done(null, {
+      googleId: u.google_id,
+      dbUserId: u.id,
+      email,
+      displayName: u.name || email,
+      initials: initials || 'U',
+      isAdmin,
+    });
+  } catch (err) {
+    return done(err);
+  }
+});
 
 function maskClientId(clientId) {
   if (!clientId) return 'missing';
@@ -594,6 +635,8 @@ function maskClientId(clientId) {
   const prefix = parts[0] || clientId;
   return `${prefix.slice(0, 12)}...apps.googleusercontent.com`;
 }
+
+let googleAuthConfigured = false;
 
 if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL) {
   console.log(
@@ -671,6 +714,7 @@ if (GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET && GOOGLE_CALLBACK_URL) {
       }
     )
   );
+  googleAuthConfigured = true;
 }
 
 function requireAuth(req, res, next) {
@@ -812,7 +856,7 @@ async function requireUploadPermission(req, res, next) {
 
 // ── Auth routes ───────────────────────────────────────────
 app.get('/auth/google', (req, res, next) => {
-  if (!passport._strategy('google')) {
+  if (!googleAuthConfigured) {
     return res.status(500).send('Google auth is not configured yet.');
   }
 
@@ -832,7 +876,7 @@ app.get('/auth/google', (req, res, next) => {
 app.get(
   '/auth/google/callback',
   (req, res, next) => {
-    if (!passport._strategy('google')) {
+    if (!googleAuthConfigured) {
       return res.status(500).send('Google auth is not configured yet.');
     }
     return passport.authenticate('google', {
@@ -847,7 +891,9 @@ app.get(
 app.get('/auth/logout', (req, res, next) => {
   req.logout((err) => {
     if (err) return next(err);
-    req.session.destroy(() => {
+    req.session.destroy((destroyErr) => {
+      if (destroyErr) console.error('Session destroy error:', destroyErr.message);
+      res.clearCookie('sewing.sid');
       res.redirect('/index.html');
     });
   });
