@@ -585,12 +585,50 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+function normalizeSessionUserId(rawUser) {
+  if (rawUser == null) return null;
+
+  if (typeof rawUser === 'number' && Number.isInteger(rawUser) && rawUser > 0) {
+    return rawUser;
+  }
+
+  if (typeof rawUser === 'string') {
+    const trimmed = rawUser.trim();
+    if (/^\d+$/.test(trimmed)) return Number(trimmed);
+
+    try {
+      const parsed = JSON.parse(trimmed);
+      return normalizeSessionUserId(parsed);
+    } catch {
+      return null;
+    }
+  }
+
+  if (typeof rawUser === 'object') {
+    const candidate = rawUser.dbUserId ?? rawUser.id;
+    return normalizeSessionUserId(candidate);
+  }
+
+  return null;
+}
+
 // Serialize only the DB user ID so the session stays small and permissions
 // are always re-fetched from the database on each request.
-passport.serializeUser((user, done) => done(null, user.dbUserId));
+passport.serializeUser((user, done) => {
+  const dbUserId = normalizeSessionUserId(user?.dbUserId ?? user?.id);
+  if (!dbUserId) {
+    return done(new Error('Unable to serialize session user: missing numeric DB user id'));
+  }
+  return done(null, dbUserId);
+});
 
-passport.deserializeUser(async (dbUserId, done) => {
+passport.deserializeUser(async (sessionUser, done) => {
   try {
+    const dbUserId = normalizeSessionUserId(sessionUser);
+    if (!dbUserId) {
+      return done(null, false);
+    }
+
     const userRow = await pool.query(
       'SELECT id, google_id, email, name FROM users WHERE id = $1 LIMIT 1',
       [dbUserId]
