@@ -1930,6 +1930,43 @@ app.use((err, req, res, _next) => {
   return res.status(500).sendFile(path.join(__dirname, '500.html'));
 });
 
+// ── Migrations ──────────────────────────────────────────
+async function runPendingMigrations() {
+  const client = await pool.connect();
+  try {
+    // Check if we need to run the role normalization migration
+    const checkMigration = await client.query(`
+      SELECT EXISTS (
+        SELECT 1 FROM role_permissions
+        WHERE role_name != LOWER(BTRIM(role_name))
+           OR id != (
+             SELECT MAX(id) FROM role_permissions rp2 
+             WHERE LOWER(BTRIM(rp2.role_name)) = LOWER(BTRIM(role_permissions.role_name))
+           )
+      ) AS needs_migration
+    `);
+
+    if (checkMigration.rows[0]?.needs_migration) {
+      console.log('[migrations] Running role normalization...');
+      
+      const migrationSql = fs.readFileSync(
+        path.join(__dirname, 'db', 'fix_duplicate_role_permissions.sql'),
+        'utf8'
+      );
+      
+      await client.query(migrationSql);
+      console.log('[migrations] ✓ Role normalization completed');
+    } else {
+      console.log('[migrations] No pending migrations');
+    }
+  } catch (err) {
+    console.warn('[migrations] Migration check/execution warning:', err.message);
+    // Non-fatal: continue startup even if migration fails
+  } finally {
+    client.release();
+  }
+}
+
 // ── Start ────────────────────────────────────────────────
 async function startServer() {
   try {
@@ -1943,6 +1980,7 @@ async function startServer() {
 
     fs.mkdirSync(uploadsDir, { recursive: true });
     await ensureSchema();
+    await runPendingMigrations();
     app.listen(PORT, () => {
       console.log(`Sewing Room server running on http://localhost:${PORT}`);
     });
