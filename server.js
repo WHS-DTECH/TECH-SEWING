@@ -1048,7 +1048,7 @@ app.post('/api/admin/user-roles', requireAuth, requireAdmin, async (req, res) =>
        VALUES ($1, $2, $3, $4, NOW())`,
       [
         userId,
-        role.trim(),
+        role.trim().toLowerCase(),
         user_type ? user_type.trim() : null,
         req.user.dbUserId || null,
       ]
@@ -1138,6 +1138,8 @@ app.put('/api/admin/role-permissions', requireAuth, requireAdmin, async (req, re
     for (const r of roles) {
       if (!r.role_name) continue;
 
+      const normalizedRoleName = r.role_name.trim().toLowerCase();
+
       const update = await pool.query(
         `UPDATE role_permissions
          SET recipes = $2,
@@ -1146,9 +1148,9 @@ app.put('/api/admin/role-permissions', requireAuth, requireAdmin, async (req, re
              planning = $5,
              admin = $6,
              updated_at = NOW()
-         WHERE LOWER(role_name) = LOWER($1)`,
+         WHERE role_name = $1`,
         [
-          r.role_name,
+          normalizedRoleName,
           !!r.recipes,
           !!r.add_recipes,
           !!r.inventory,
@@ -1162,7 +1164,7 @@ app.put('/api/admin/role-permissions', requireAuth, requireAdmin, async (req, re
           `INSERT INTO role_permissions (role_name, recipes, add_recipes, inventory, planning, admin, created_at, updated_at)
            VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
           [
-            r.role_name,
+            normalizedRoleName,
             !!r.recipes,
             !!r.add_recipes,
             !!r.inventory,
